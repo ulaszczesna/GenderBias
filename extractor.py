@@ -98,11 +98,30 @@ class Extractor:
                     return label
 
         return "other"
+    
+    def extract_adjectives(self, row):
+        text = row["description"]
+        language = row["language"].lower()
+        nlp = self.models.get(language)
+        if not nlp or pd.isna(text):
+            return []
+
+        doc = nlp(text)
+
+        adjectives = []
+        for token in doc:
+            if token.pos_ == "ADJ" and token.dep_ in ["amod", "acomp"]:
+                adjectives.append(token.lemma_.lower())  # lemma = forma podstawowa
+
+        return adjectives
+
+
 
 
     def extract(self):
         self.data["extracted_gender"] = self.data.apply(self.extract_gender, axis=1)
         self.data["extracted_name"] = self.data.apply(self.extract_name, axis=1)
+        self.data["adjectives"] = self.data.apply(self.extract_adjectives, axis=1)
 
     def save(self, path):
         self.data.to_csv(path, index=False, sep=';')
