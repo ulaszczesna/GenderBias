@@ -123,6 +123,9 @@ class Extractor:
         self.data["extracted_name"] = self.data.apply(self.extract_name, axis=1)
         self.data["adjectives"] = self.data.apply(self.extract_adjectives, axis=1)
 
+    def extract_only_adjectives(self):
+        self.data["adjectives"] = self.data.apply(self.extract_adjectives, axis=1)
+
     def save(self, path):
         self.data.to_csv(path, index=False, sep=';')
 
