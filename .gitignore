@@ -1,2 +1,6 @@
 /venv
 /results
+test.ipynb
+chroma_db/
+results_rag/
+.DS_Store
