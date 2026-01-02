@@ -1,5 +1,5 @@
 /venv
 /results
-test.ipynb
 chroma_db/
 .DS_Store
+/results_rag/
