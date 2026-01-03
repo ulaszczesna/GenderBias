@@ -1,7 +1,7 @@
 import chromadb
 
 class ChromaDatabase:
-    def __init__(self, collection_name: str = "gender_equality_docs", path: str = "../chroma_db"):
+    def __init__(self, collection_name: str = "gender_equality_docs", path: str = "rag/chroma_db"):
         self.client = chromadb.PersistentClient(path)
         self.collection = self.client.get_or_create_collection(name=collection_name)
 

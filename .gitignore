@@ -1,5 +1,8 @@
 /venv
 /results
-chroma_db/
+/rag/chroma_db/
 .DS_Store
 /results_rag/
+__pycache__/
+*.py
+chroma_db/

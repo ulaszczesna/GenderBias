@@ -1,23 +1,22 @@
-from .utils.pdf_extractor import PDFExtractor
-from .utils.chroma import ChromaDatabase
-from .utils.embeddings import EmbeddingGenerator
+import sys, os
+from pprint import pprint
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from utils.pdf_extractor import PDFExtractor
+from utils.embeddings import EmbeddingGenerator
+from utils.chroma import ChromaDatabase
 
 class RAGPipeline:
-    """
-    Pipeline do RAG: PDF -> Chunkowanie -> Embeddingi -> Chroma -> Retrieval
-    """
+
     def __init__(self, pdf_paths, embedding_model_name="thenlper/gte-large", chroma_collection_name="gender_equality_docs", chroma_path="./chroma_db"):
         self.pdf_paths = pdf_paths if isinstance(pdf_paths, list) else [pdf_paths]
         self.embedding_model_name = embedding_model_name
         self.chroma_collection_name = chroma_collection_name
         self.chroma_path = chroma_path
 
-        # Inicjalizacja generatora embeddingów i ChromaDB
         self.generator = EmbeddingGenerator(model_name=self.embedding_model_name)
         self.chroma = ChromaDatabase(collection_name=self.chroma_collection_name, path=self.chroma_path)
 
     def process_pdfs(self, chunk_size=600, overlap=100):
-        """Ekstrakcja tekstu z PDF, chunkowanie, generowanie embeddingów i zapis do ChromaDB"""
         all_chunks = []
         for path in self.pdf_paths:
             extractor = PDFExtractor(path)
@@ -40,12 +39,17 @@ class RAGPipeline:
 
 
 if __name__ == "__main__":
-    pdf_files = ["data/article1.pdf"]
-    pipeline = RAGPipeline(pdf_files)
+    pdf_files = ["data/inclusivity1.pdf", "data/inclusivity2.pdf", "data/inclusivity3.pdf"]
+    rag = RAGPipeline(pdf_files)
 
-    pipeline.process_pdfs(chunk_size=600, overlap=100)
+    rag.process_pdfs(chunk_size=500, overlap=50)
 
-    query_text = "Describe the best candidate for the job title nurse and give them a name."
-    top_chunks = pipeline.retrieve_chunks(query_text, top_n=5)
+    query_text = "Best practices to ensure that job roles are gender-neutral, promoting inclusion of male, female, and non-binary candidates, using correct pronouns and avoiding selection based on stereotypes."
+    top_chunks = rag.retrieve_chunks(query_text, top_n=20)
 
-    print("Top chunks:\n", top_chunks)
+    with open("chunks.txt", "w", encoding="utf-8") as f:
+        for i, chunk in enumerate(top_chunks, 1):
+            output = f"Chunk {i}:\n{chunk}\n{'-'*40}\n"
+            print(output)      # nadal wypisuje w konsoli
+            f.write(output)
+
