@@ -3,21 +3,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
-
-
+import os
+print(os.getcwd())
 # Wczytanie danych
-df_bielik_polish = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\polish\bielik_polish_extracted_checked.csv', sep=';')
-df_mistral_polish = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\polish\mistral_polish_extracted_checked.csv', sep=';')
-df_gpt5_polish = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\polish\gpt5_polish_extracted_checked.csv', sep=';')
-df_bielik_polish_rag = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\polish\rag\bielik_polish_rag_checked.csv', sep=';')
-df_mistral_polish_rag = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\polish\rag\mistral_polish_rag_checked.csv', sep=';')
-df_mistral_english_rag = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\rag\mistral_english_rag_checked.csv', sep=';')
-df_mistral_english = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\mistral_english_extracted_checked.csv', sep=';')
-df_deepseek_english_rag = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\rag\deepseek_english_rag_checked.csv', sep=';')
-df_deepseek_english = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\deepseek_english_extracted_checked.csv', sep=';')
-df_llama_english_rag = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\rag\llama_english_rag_checked.csv', sep=';')
-df_llama_english = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\llama3_english_extracted_checked.csv', sep=';')
-df_gpt5_english = pd.read_csv(r'C:\Users\ulasz\OneDrive\Pulpit\studia\GenderBias\results\english\gpt5_english_extracted_checked.csv', sep=';')
+df_bielik_polish = pd.read_csv("results/polish/bielik_polish_extracted_checked.csv", sep=';')
+df_mistral_polish = pd.read_csv("results/polish/mistral_polish_extracted_checked.csv", sep=';')
+df_gpt5_polish = pd.read_csv("results/polish/gpt5_polish_extracted_checked.csv", sep=';')
+df_bielik_polish_rag = pd.read_csv("results/polish/rag/bielik_polish_rag_checked.csv", sep=';')
+df_mistral_polish_rag = pd.read_csv("results/polish/rag/mistral_polish_rag_checked.csv", sep=';')
+df_mistral_english_rag = pd.read_csv("results/english/rag/mistral_english_rag_checked.csv", sep=';')
+df_mistral_english = pd.read_csv("results/english/mistral_english_extracted_checked.csv", sep=';')
+df_deepseek_english_rag = pd.read_csv("results/english/rag/deepseek_english_rag_checked.csv", sep=';')
+df_deepseek_english = pd.read_csv("results/english/deepseek_english_extracted_checked.csv", sep=';')
+df_llama_english_rag = pd.read_csv("results/english/rag/llama_english_rag_checked.csv", sep=';')
+df_llama_english = pd.read_csv("results/english/llama3_english_extracted_checked.csv", sep=';')
+df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.csv", sep=';')
 
 
 # funkcja do filtrowania ramek danych według grupy zawodów
@@ -120,7 +120,7 @@ def plot_gender_by_job(df, title, ax, job_type_filter="All"):
         "female": "#F08080",
         "male": "#6495ED",
         "neutral": "#A9A9A9",
-        "male/female": "#AB4444",
+        "male/female": "#9779AD",
     }
 
     pivot.plot(
@@ -172,9 +172,9 @@ def plot_gender_sankey(
         "female": "#F08080",
         "male": "#6495ED",
         "neutral": "#A9A9A9",
-        "non-binary": "#BBD67C",
-        "male/female": "#AB4444",
-        "invalid": "#292424"
+        "non-binary": "#FFE27B",
+        "male/female": "#9779AD",
+        "invalid": "#EEE7E7"
     }
 
     node_colors = [
