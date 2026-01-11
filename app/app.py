@@ -20,6 +20,7 @@ df_llama_english = pd.read_csv("results/english/llama3_english_extracted_checked
 df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.csv", sep=';')
 
 
+
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
     if job_type_filter == "All":
@@ -132,8 +133,8 @@ def plot_gender_by_job(df, title, ax, job_type_filter="All"):
     )
 
     ax.set_title(title, fontsize=17)
-    ax.set_xlabel("Number of Responses", fontsize=14)
-    ax.set_ylabel("Profession", fontsize=14)
+    ax.set_xlabel("Number of Occurrences", fontsize=14)
+    ax.set_ylabel("Job Title", fontsize=14)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
 
@@ -216,7 +217,7 @@ def plot_gender_sankey(
     return fig
 
 
-def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Predictions per Job"):
+def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Descriptions per Job"):
     jobs_list = ["secretary", "dressmaker", "nurse", "psychologist", "librarian", "HR specialist", "dietician", 
                  "school teacher", "cosmetologist", "speech therapist", "software engineer", "firefighter", "carpenter",
                  "taxi driver", "aircraft pilot", "mechanical engineer", "chief executives", "miner", "mathematician",
@@ -260,136 +261,647 @@ st.set_page_config(
     layout="wide",
     page_title="Gender Analysis Dashboard"
 )
+tab_lang, tab_mistral, tab_llama, tab_deepseek, tab_bielik = st.tabs([
+    "Language wise Analysis",
+    "Mistral",
+    "Llama 3",
+    "Deepseek",
+    "Bielik"
+])
 
-st.sidebar.title("Filters")
+with tab_lang:
+    st.header("Language-wise comparison of models in selected language")
+    col_sidebar, col_main = st.columns([1, 4])
 
-
-language = st.sidebar.selectbox(
-    "Language",
-    ["PL", "EN", "FR"]
-)
-job_type_filter = st.sidebar.selectbox(
-    "Job group",
-    ["All", "Female-dominated", "Male-dominated", "Neutral"]
-)
-
-
-models = sorted(
-    {model for (model, lang, _) in dataframes.keys() if lang == language}
-)
-
-st.title("Comparison of RAG vs No-RAG by Model")
-
-for model in models:
-    df_no_rag = dataframes.get((model, language, False))
-    df_rag    = dataframes.get((model, language, True))
-
-    if df_no_rag is None or df_rag is None:
-        st.warning(f"No data for model {model} ({language})")
-        continue
-    
-    df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
-    df_rag    = filter_by_job_type(df_rag, job_type_filter)
-    
-    if df_no_rag.empty or df_rag.empty:
-        st.info(f"No data for selected job group ({job_type_filter})")
-        continue
-
-    st.subheader(f"Model: {model}")
-    st.markdown(
-        "The bar charts below show the distribution of predicted genders "
-        "across different professions for the selected model, comparing results "
-        "without RAG (left) and with RAG (right). Colors correspond to genders."
+    with col_sidebar:
+        st.subheader("Filters")
+        language = st.selectbox("Language", ["EN", "PL", "FR"])
+        job_type_filter = st.selectbox(
+        "Job group",
+        ["All", "Female-dominated", "Male-dominated", "Neutral"]
     )
+    with col_main:
+        
 
 
-    fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
-
-    plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
-    plot_gender_by_job(df_rag, "With RAG", axes[1])
-
-    handles, labels = axes[1].get_legend_handles_labels()
-
-    fig.legend(
-        handles,
-        labels,
-        title="Gender",
-        loc="center right",
-        fontsize=15,
-        title_fontsize=17
-    )
-
-    plt.tight_layout(rect=[0, 0, 0.9, 1])
-    st.pyplot(fig)
-
-    show_details = st.toggle(
-    f"Show more detailed analysis for {model}",
-    key=f"sankey_{model}")
-    
-
-    if show_details:
-        job_options = ["All"] + sorted(
-            set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+        models = sorted(
+            {model for (model, lang, _) in dataframes.keys() if lang == language}
         )
 
-        selected_job = st.selectbox(
-            "Select job title",
-            job_options,
-            key=f"job_{model}"
-        )
-        st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
-        st.markdown(
-            "These Sankey diagrams visualize how the predicted gender from the model "
-            "flows from the description-derived gender. Left: without RAG, Right: with RAG."
-        )
-        col1, col2 = st.columns(2)
+   
 
-        with col1:
-            # st.markdown("##### Without RAG")
-            sankey_no_rag = plot_gender_sankey(
-                df_no_rag,
-                selected_job,
-                title="Without RAG"
-            )
-            st.plotly_chart(
-                sankey_no_rag,
-                use_container_width=True
+        for model in models:
+            df_no_rag = dataframes.get((model, language, False))
+            df_rag    = dataframes.get((model, language, True))
+
+            if df_no_rag is None or df_rag is None:
+                st.warning(f"No data for model {model} ({language})")
+                continue
+            
+            df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+            df_rag    = filter_by_job_type(df_rag, job_type_filter)
+            
+            if df_no_rag.empty or df_rag.empty:
+                st.info(f"No data for selected job group ({job_type_filter})")
+                continue
+
+            st.subheader(f"Model: {model}")
+            st.markdown(
+                "The bar charts below show the distribution of description-derived genders "
+                "across different professions for the selected model, comparing results "
+                "without RAG (left) and with RAG (right). Colors correspond to genders."
             )
 
-        with col2:
-            # st.markdown("##### With RAG")
-            sankey_rag = plot_gender_sankey(
-                df_rag,
-                selected_job,
-                title="With RAG"
+
+            fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+
+            plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
+            plot_gender_by_job(df_rag, "With RAG", axes[1])
+
+            handles, labels = axes[1].get_legend_handles_labels()
+
+            fig.legend(
+                handles,
+                labels,
+                title="Gender",
+                loc="center right",
+                fontsize=15,
+                title_fontsize=17
             )
-            st.plotly_chart(
-    
-                sankey_rag,
-                use_container_width=True
-            )
 
-        delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
-        st.subheader("Change in Neutral Predictions per Job")
-        st.markdown(
-            "This bar chart shows how many additional 'neutral' predictions "
-            "RAG produced for each profession compared to no-RAG. Bars to the right "
-            "of the zero line indicate an increase in neutral predictions."
-        )
+            plt.tight_layout(rect=[0, 0, 0.9, 1])
+            st.pyplot(fig)
 
-        fig_jobs = plot_neutral_delta_count_per_job(
-            delta_neutral_jobs,
-            title=f"Effect of RAG on Neutral Predictions per Job – {model} ({language})"
-        )
-
-        st.plotly_chart(fig_jobs, use_container_width=True)
-
-
-
-                                
-
+            show_details = st.toggle(
+            f"Show more detailed analysis for {model}",
+            key=f"sankey_{model}")
             
 
+            if show_details:
+                job_options = ["All"] + sorted(
+                    set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+                )
 
+                selected_job = st.selectbox(
+                    "Select job title",
+                    job_options,
+                    key=f"job_{model}"
+                )
+                st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
+                st.markdown(
+                    "These Sankey diagrams visualize how the predicted gender from the model "
+                    "flows from the description-derived gender. Left: without RAG, Right: with RAG."
+                )
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # st.markdown("##### Without RAG")
+                    sankey_no_rag = plot_gender_sankey(
+                        df_no_rag,
+                        selected_job,
+                        title="Without RAG"
+                    )
+                    st.plotly_chart(
+                        sankey_no_rag,
+                        use_container_width=True
+                    )
+
+                with col2:
+                    # st.markdown("##### With RAG")
+                    sankey_rag = plot_gender_sankey(
+                        df_rag,
+                        selected_job,
+                        title="With RAG"
+                    )
+                    st.plotly_chart(
+            
+                        sankey_rag,
+                        use_container_width=True
+                    )
+
+                delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+                st.subheader("Change in  Number of Neutral Descriptions per Job")
+                st.markdown(
+                    "This bar chart shows how many additional 'neutral' descriptions "
+                    "RAG produced for each profession compared to no-RAG. Bars to the right "
+                    "of the zero line indicate an increase in neutral descriptions."
+                )
+
+                fig_jobs = plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – {model} ({language})"
+                )
+
+                st.plotly_chart(fig_jobs, use_container_width=True)
+
+with tab_mistral:
+    st.header("Mistral Model Analysis")
+    col_sidebar, col_main = st.columns([1, 4])
+
+    with col_sidebar:
+        st.subheader("Filters")
+        job_type_filter = st.selectbox(
+        "Job group",
+        ["All", "Female-dominated", "Male-dominated", "Neutral"],
+        key="mistral_job_type"
+    )
+    with col_main:
+
+
+        mistral_languages = sorted({
+            lang
+            for (model, lang, _) in dataframes.keys()
+            if model == "Mistral"
+        })
+
+
+
+        st.header("Comparison of RAG vs No-RAG by Language")
+
+        for lang in mistral_languages:
+            df_no_rag = dataframes.get(("Mistral", lang, False))
+            df_rag    = dataframes.get(("Mistral", lang, True))
+
+            if df_no_rag is None or df_rag is None:
+                st.warning(f"No data for model {model} ({lang})")
+                continue
+            
+            df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+            df_rag    = filter_by_job_type(df_rag, job_type_filter)
+            
+            if df_no_rag.empty or df_rag.empty:
+                st.info(f"No data for selected job group ({job_type_filter})")
+                continue
+
+            st.subheader(f"Model: Mistral ({lang})")
+            st.markdown(
+                "The bar charts below show the distribution of description-derived genders "
+                "across different professions for the selected model, comparing results "
+                "without RAG (left) and with RAG (right). Colors correspond to genders."
+            )
+
+
+            fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+
+            plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
+            plot_gender_by_job(df_rag, "With RAG", axes[1])
+
+            handles, labels = axes[1].get_legend_handles_labels()
+
+            fig.legend(
+                handles,
+                labels,
+                title="Gender",
+                loc="center right",
+                fontsize=15,
+                title_fontsize=17
+            )
+
+            plt.tight_layout(rect=[0, 0, 0.9, 1])
+            st.pyplot(fig)
+
+            show_details = st.toggle(
+            f"Show more detailed analysis for Mistral in {lang}",
+            key=f"sankey_Mistral_{lang}")
+            
+
+            if show_details:
+                job_options = ["All"] + sorted(
+                    set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+                )
+
+                selected_job = st.selectbox(
+                    "Select job title",
+                    job_options,
+                    key=f"job_{model}_{lang}"
+                )
+                st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
+                st.markdown(
+                    "These Sankey diagrams visualize how the predicted gender from the model "
+                    "flows from the description-derived gender. Left: without RAG, Right: with RAG."
+                )
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # st.markdown("##### Without RAG")
+                    sankey_no_rag = plot_gender_sankey(
+                        df_no_rag,
+                        selected_job,
+                        title="Without RAG"
+                    )
+                    st.plotly_chart(
+                        sankey_no_rag,
+                        use_container_width=True
+                    )
+
+                with col2:
+                    # st.markdown("##### With RAG")
+                    sankey_rag = plot_gender_sankey(
+                        df_rag,
+                        selected_job,
+                        title="With RAG"
+                    )
+                    st.plotly_chart(
+            
+                        sankey_rag,
+                        use_container_width=True
+                    )
+
+                delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+                st.subheader("Change in Number of Neutral Descriptions per Job")
+                st.markdown(
+                    "This bar chart shows how many additional 'neutral' descriptions "
+                    "RAG produced for each profession compared to no-RAG. Bars to the right "
+                    "of the zero line indicate an increase in neutral descriptions."
+                )
+
+                fig_jobs = plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – Mistral ({lang})"
+                )
+
+                st.plotly_chart(fig_jobs, use_container_width=True)
+
+with tab_llama:
+    st.header("Llama Model Analysis")
+    col_sidebar, col_main = st.columns([1, 4])
+
+    with col_sidebar:
+        st.subheader("Filters")
+        job_type_filter = st.selectbox(
+        "Job group",
+        ["All", "Female-dominated", "Male-dominated", "Neutral"],
+        key="llama_job_type"
+    )
+    with col_main:
+
+
+        llama_languages = sorted({
+            lang
+            for (model, lang, _) in dataframes.keys()
+            if model == "Llama"
+        })
+
+
+
+        st.header("Comparison of RAG vs No-RAG by Language")
+
+        for lang in llama_languages:
+            df_no_rag = dataframes.get(("Llama", lang, False))
+            df_rag    = dataframes.get(("Llama", lang, True))
+
+            if df_no_rag is None or df_rag is None:
+                st.warning(f"No data for model {model} ({lang})")
+                continue
+            
+            df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+            df_rag    = filter_by_job_type(df_rag, job_type_filter)
+            
+            if df_no_rag.empty or df_rag.empty:
+                st.info(f"No data for selected job group ({job_type_filter})")
+                continue
+
+            st.subheader(f"Model: Llama ({lang})")
+            st.markdown(
+                "The bar charts below show the distribution of description-derived genders "
+                "across different professions for the selected model, comparing results "
+                "without RAG (left) and with RAG (right). Colors correspond to genders."
+            )
+
+
+            fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+
+            plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
+            plot_gender_by_job(df_rag, "With RAG", axes[1])
+
+            handles, labels = axes[1].get_legend_handles_labels()
+
+            fig.legend(
+                handles,
+                labels,
+                title="Gender",
+                loc="center right",
+                fontsize=15,
+                title_fontsize=17
+            )
+
+            plt.tight_layout(rect=[0, 0, 0.9, 1])
+            st.pyplot(fig)
+
+            show_details = st.toggle(
+            f"Show more detailed analysis for Llama in {lang}",
+            key=f"sankey_Llama_{lang}")
+            
+
+            if show_details:
+                job_options = ["All"] + sorted(
+                    set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+                )
+
+                selected_job = st.selectbox(
+                    "Select job title",
+                    job_options,
+                    key=f"job_{model}_{lang}"
+                )
+                st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
+                st.markdown(
+                    "These Sankey diagrams visualize how the predicted gender from the model "
+                    "flows from the description-derived gender. Left: without RAG, Right: with RAG."
+                )
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # st.markdown("##### Without RAG")
+                    sankey_no_rag = plot_gender_sankey(
+                        df_no_rag,
+                        selected_job,
+                        title="Without RAG"
+                    )
+                    st.plotly_chart(
+                        sankey_no_rag,
+                        use_container_width=True
+                    )
+
+                with col2:
+                    # st.markdown("##### With RAG")
+                    sankey_rag = plot_gender_sankey(
+                        df_rag,
+                        selected_job,
+                        title="With RAG"
+                    )
+                    st.plotly_chart(
+            
+                        sankey_rag,
+                        use_container_width=True
+                    )
+
+                delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+                st.subheader("Change in Number of Neutral Descriptions per Job")
+                st.markdown(
+                    "This bar chart shows how many additional 'neutral' descriptions "
+                    "RAG produced for each profession compared to no-RAG. Bars to the right "
+                    "of the zero line indicate an increase in neutral descriptions."
+                )
+
+                fig_jobs = plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – Llama ({lang})"
+                )
+
+                st.plotly_chart(fig_jobs, use_container_width=True)
+with tab_deepseek:
+    st.header("Deepseek Model Analysis")
+    col_sidebar, col_main = st.columns([1, 4])
+
+    with col_sidebar:
+        st.subheader("Filters")
+        job_type_filter = st.selectbox(
+        "Job group",
+        ["All", "Female-dominated", "Male-dominated", "Neutral"],
+        key="deepseek_job_type"
+    )
+    with col_main:
+
+
+        deepseek_languages = sorted({
+            lang
+            for (model, lang, _) in dataframes.keys()
+            if model == "Deepseek"
+        })
+
+
+
+        st.header("Comparison of RAG vs No-RAG by Language")
+
+        for lang in deepseek_languages:
+            df_no_rag = dataframes.get(("Deepseek", lang, False))
+            df_rag    = dataframes.get(("Deepseek", lang, True))
+
+            if df_no_rag is None or df_rag is None:
+                st.warning(f"No data for model {model} ({lang})")
+                continue
+            
+            df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+            df_rag    = filter_by_job_type(df_rag, job_type_filter)
+            
+            if df_no_rag.empty or df_rag.empty:
+                st.info(f"No data for selected job group ({job_type_filter})")
+                continue
+
+            st.subheader(f"Model: Deepseek ({lang})")
+            st.markdown(
+                "The bar charts below show the distribution of description-derived genders "
+                "across different professions for the selected model, comparing results "
+                "without RAG (left) and with RAG (right). Colors correspond to genders."
+            )
+
+
+            fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+
+            plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
+            plot_gender_by_job(df_rag, "With RAG", axes[1])
+
+            handles, labels = axes[1].get_legend_handles_labels()
+
+            fig.legend(
+                handles,
+                labels,
+                title="Gender",
+                loc="center right",
+                fontsize=15,
+                title_fontsize=17
+            )
+
+            plt.tight_layout(rect=[0, 0, 0.9, 1])
+            st.pyplot(fig)
+
+            show_details = st.toggle(
+            f"Show more detailed analysis for Deepseek in {lang}",
+            key=f"sankey_Deepseek_{lang}")
+            
+
+            if show_details:
+                job_options = ["All"] + sorted(
+                    set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+                )
+
+                selected_job = st.selectbox(
+                    "Select job title",
+                    job_options,
+                    key=f"job_{model}_{lang}"
+                )
+                st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
+                st.markdown(
+                    "These Sankey diagrams visualize how the predicted gender from the model "
+                    "flows from the description-derived gender. Left: without RAG, Right: with RAG."
+                )
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # st.markdown("##### Without RAG")
+                    sankey_no_rag = plot_gender_sankey(
+                        df_no_rag,
+                        selected_job,
+                        title="Without RAG"
+                    )
+                    st.plotly_chart(
+                        sankey_no_rag,
+                        use_container_width=True
+                    )
+
+                with col2:
+                    # st.markdown("##### With RAG")
+                    sankey_rag = plot_gender_sankey(
+                        df_rag,
+                        selected_job,
+                        title="With RAG"
+                    )
+                    st.plotly_chart(
+            
+                        sankey_rag,
+                        use_container_width=True
+                    )
+
+                delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+                st.subheader("Change in Number of Neutral Descriptions per Job")
+                st.markdown(
+                    "This bar chart shows how many additional 'neutral' descriptions "
+                    "RAG produced for each profession compared to no-RAG. Bars to the right "
+                    "of the zero line indicate an increase in neutral descriptions."
+                )
+
+                fig_jobs = plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – Deepseek ({lang})"
+                )
+
+                st.plotly_chart(fig_jobs, use_container_width=True)
+with tab_bielik:
+    st.header("Bielik Model Analysis")
+    col_sidebar, col_main = st.columns([1, 4])
+
+    with col_sidebar:
+        st.subheader("Filters")
+        job_type_filter = st.selectbox(
+        "Job group",
+        ["All", "Female-dominated", "Male-dominated", "Neutral"],
+        key="bielik_job_type"
+    )
+    with col_main:
+
+
+        bielik_languages = sorted({
+            lang
+            for (model, lang, _) in dataframes.keys()
+            if model == "Bielik"
+        })
+
+
+
+        st.header("Comparison of RAG vs No-RAG by Language")
+
+        for lang in bielik_languages:
+            df_no_rag = dataframes.get(("Bielik", lang, False))
+            df_rag    = dataframes.get(("Bielik", lang, True))
+
+            if df_no_rag is None or df_rag is None:
+                st.warning(f"No data for model {model} ({lang})")
+                continue
+            
+            df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+            df_rag    = filter_by_job_type(df_rag, job_type_filter)
+            
+            if df_no_rag.empty or df_rag.empty:
+                st.info(f"No data for selected job group ({job_type_filter})")
+                continue
+
+            st.subheader(f"Model: Bielik ({lang})")
+            st.markdown(
+                "The bar charts below show the distribution of description-derived genders "
+                "across different professions for the selected model, comparing results "
+                "without RAG (left) and with RAG (right). Colors correspond to genders."
+            )
+
+
+            fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+
+            plot_gender_by_job(df_no_rag, "Without RAG", axes[0])
+            plot_gender_by_job(df_rag, "With RAG", axes[1])
+
+            handles, labels = axes[1].get_legend_handles_labels()
+
+            fig.legend(
+                handles,
+                labels,
+                title="Gender",
+                loc="center right",
+                fontsize=15,
+                title_fontsize=17
+            )
+
+            plt.tight_layout(rect=[0, 0, 0.9, 1])
+            st.pyplot(fig)
+
+            show_details = st.toggle(
+            f"Show more detailed analysis for Bielik in {lang}",
+            key=f"sankey_Bielik_{lang}")
+            
+
+            if show_details:
+                job_options = ["All"] + sorted(
+                    set(df_no_rag["job_title_english"]) | set(df_rag["job_title_english"])
+                )
+
+                selected_job = st.selectbox(
+                    "Select job title",
+                    job_options,
+                    key=f"job_{model}_{lang}"
+                )
+                st.subheader("Flow from Description-Derived Gender to Model-Predicted Gender")
+                st.markdown(
+                    "These Sankey diagrams visualize how the predicted gender from the model "
+                    "flows from the description-derived gender. Left: without RAG, Right: with RAG."
+                )
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # st.markdown("##### Without RAG")
+                    sankey_no_rag = plot_gender_sankey(
+                        df_no_rag,
+                        selected_job,
+                        title="Without RAG"
+                    )
+                    st.plotly_chart(
+                        sankey_no_rag,
+                        use_container_width=True
+                    )
+
+                with col2:
+                    # st.markdown("##### With RAG")
+                    sankey_rag = plot_gender_sankey(
+                        df_rag,
+                        selected_job,
+                        title="With RAG"
+                    )
+                    st.plotly_chart(
+            
+                        sankey_rag,
+                        use_container_width=True
+                    )
+
+                delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+                st.subheader("Change in Number of Neutral Descriptions per Job")
+                st.markdown(
+                    "This bar chart shows how many additional 'neutral' descriptions."
+                    "RAG produced for each profession compared to no-RAG. Bars to the right "
+                    "of the zero line indicate an increase in neutral descriptions."
+                )
+
+                fig_jobs = plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – Bielik ({lang})"
+                )
+
+                st.plotly_chart(fig_jobs, use_container_width=True)
 
 
