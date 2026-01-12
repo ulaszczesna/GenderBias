@@ -517,7 +517,8 @@ def plot_job_gender_radar_shared(df_left, df_right):
             name=gender,
             line=dict(color=colors.get(gender, "#A9A9A9")),
             legendgroup=gender,
-            showlegend=showlegend_left
+            showlegend=showlegend_left,
+            hovertemplate="%{theta}<br>%{r:.2f}%<extra>%{fullData.name}</extra>"
         ), row=1, col=1)
 
         # Add right radar trace
@@ -529,7 +530,8 @@ def plot_job_gender_radar_shared(df_left, df_right):
             name=gender,
             line=dict(color=colors.get(gender, "#A9A9A9")),
             legendgroup=gender,
-            showlegend=showlegend_right if not showlegend_left else False
+            showlegend=showlegend_right if not showlegend_left else False,
+            hovertemplate="%{theta}<br>%{r:.2f}%<extra>%{fullData.name}</extra>"
         ), row=1, col=2)
 
     all_values = []
@@ -553,10 +555,12 @@ def plot_job_gender_radar_shared(df_left, df_right):
         ),
         polar=dict(
             domain=dict(x=[0.05, 0.48]),
-            radialaxis=dict(visible=True, range=[0, max_val*1.1])),
+            radialaxis=dict(visible=True, range=[0, max_val*1.1]),
+        ),
         polar2=dict(
             domain=dict(x=[0.58, 1.0]),
-            radialaxis=dict(visible=True, range=[0, max_val*1.1])),
+            radialaxis=dict(visible=True, range=[0, max_val*1.1]),
+        ),
         legend=dict(
             title=dict(text="Gender", font=dict(size=12, color="black")),
             font=dict(size=12, color="black"),
@@ -573,7 +577,6 @@ def plot_job_gender_radar_shared(df_left, df_right):
         showlegend=True,
         height=480
     )
-
     return fig
 
 
@@ -674,7 +677,7 @@ def render_model_analysis(model, language, job_type_filter):
         # ------ SANKY DIAGRAMS --------
         fig = plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=selected_job, model_name=model, language=language)
         st.plotly_chart(fig, use_container_width=True)
-            # -------- SPIDER CHART --------
+         # -------- SPIDER CHART --------
         st.plotly_chart(
         plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
         use_container_width=True
