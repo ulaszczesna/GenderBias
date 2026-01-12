@@ -152,85 +152,102 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
     pivot_no_rag = prepare_pivot(df_no_rag)
     pivot_rag = prepare_pivot(df_rag)
 
+    # Ensure legend order: preferred first, others appended
+    PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
+    def sort_genders(genders):
+        gset = list(dict.fromkeys(genders))
+        ordered = [g for g in PREFERRED_LEGEND_ORDER if g in gset]
+        ordered += [g for g in gset if g not in PREFERRED_LEGEND_ORDER]
+        return ordered
+
+    all_genders = sort_genders(list(set(pivot_no_rag.columns) | set(pivot_rag.columns)))
+
+    # Create subplot figure (restore fig definition)
     fig = make_subplots(
         rows=1, cols=2,
         shared_yaxes=True,
-        horizontal_spacing=0.15,  # odstęp między wykresami
+        horizontal_spacing=0.05,
         subplot_titles=("Without RAG", "With RAG")
     )
-# Lista wszystkich genderów występujących w obu wykresach
-    all_genders = list(set(pivot_no_rag.columns) | set(pivot_rag.columns))
 
     # Trzymamy info, które gendery już dodaliśmy do legendy
     legend_shown = {gender: False for gender in all_genders}
 
-    # 🔹 Wykres Without RAG
-    for gender in pivot_no_rag.columns:
-        fig.add_trace(
-            go.Bar(
-                y=pivot_no_rag.index,
-                x=pivot_no_rag[gender],
-                name=gender,
-                orientation='h',
-                marker_color=colors.get(gender, "black"),
-                showlegend=not legend_shown[gender]  # pokaż legendę tylko raz
-            ),
-            row=1, col=1
-        )
-        legend_shown[gender] = True  # oznaczamy, że legendę dodano
+    # 🔹 Wykres Without RAG (add traces in preferred order)
+    for gender in all_genders:
+        if gender in pivot_no_rag.columns:
+            fig.add_trace(
+                go.Bar(
+                    y=pivot_no_rag.index,
+                    x=pivot_no_rag[gender],
+                    name=gender,
+                    orientation='h',
+                    marker_color=colors.get(gender, "black"),
+                    legendgroup=gender,
+                    showlegend=not legend_shown[gender]
+                ),
+                row=1, col=1
+            )
+            legend_shown[gender] = True  # oznaczamy, że legendę dodano
 
-    # 🔹 Wykres With RAG
-    for gender in pivot_rag.columns:
-        fig.add_trace(
-            go.Bar(
-                y=pivot_rag.index,
-                x=pivot_rag[gender],
-                name=gender,
-                orientation='h',
-                marker_color=colors.get(gender, "black"),
-                showlegend=not legend_shown[gender]  # tylko te, które jeszcze nie były w legendzie
-            ),
-            row=1, col=2
-        )
-        legend_shown[gender] = True
-
+    # 🔹 Wykres With RAG (same order)
+    for gender in all_genders:
+        if gender in pivot_rag.columns:
+            fig.add_trace(
+                go.Bar(
+                    y=pivot_rag.index,
+                    x=pivot_rag[gender],
+                    name=gender,
+                    orientation='h',
+                    marker_color=colors.get(gender, "black"),
+                    legendgroup=gender,
+                    showlegend=not legend_shown[gender]
+                ),
+                row=1, col=2
+            )
+            legend_shown[gender] = True
 
     fig.update_layout(
-    barmode='stack',
-    title=dict(
-        text=f"Gender Distribution by Job Title - {model_name} ({language})",
-        font=dict(size=20, color="black"),
-        x=0.5,  # środkowanie tytułu głównego
-        xanchor="center"
-    ),
-    font=dict(size=14, color="black"),
-    height=600,
-    width=1400,
-    xaxis=dict(
-        title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
-        tickfont=dict(color="black", size=12)
-    ),
-    xaxis2=dict(
-        title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
-        tickfont=dict(color="black", size=12)
-    ),
-    yaxis=dict(
-        title=dict(text="Job Title", font=dict(color="black", size=14)),
-        tickfont=dict(color="black", size=12)
-    ),
-    yaxis2=dict(
-        tickfont=dict(color="black", size=12)
-    ),
-    legend=dict(
-        title=dict(text="Gender", font=dict(size=12, color="black")),
-        font=dict(size=12, color="black"),
-        x=1.02,  # przesunięcie w prawo
-        y=0.5,   # wyśrodkowanie pionowe
-        xanchor="left",
-        yanchor="middle"
-    ),
-    margin=dict(l=150, r=150, t=100, b=50)
-)
+        barmode='stack',
+        title=dict(
+            text=f"Gender Distribution by Job Title - {model_name} ({language})",
+            font=dict(size=20, color="black"),
+            x=0.5,
+            xanchor="center"
+        ),
+        font=dict(size=14, color="black"),
+        height=600,
+        width=1800,
+        xaxis=dict(
+            title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        xaxis2=dict(
+            title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        yaxis=dict(
+            title=dict(text="Job Title", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        yaxis2=dict(
+            tickfont=dict(color="black", size=12)
+        ),
+        legend=dict(
+            title=dict(text="Gender", font=dict(size=12, color="black")),
+            font=dict(size=12, color="black"),
+            x=1.02,
+            y=0.5,
+            xanchor="left",
+            yanchor="middle",
+            orientation="v",
+            bgcolor="rgba(255,255,255,0)",
+            bordercolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            traceorder='normal'
+        ),
+        margin=dict(l=150, r=150, t=100, b=50)
+    )
 
 
     return fig
@@ -324,7 +341,10 @@ def plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=None, model_name=""
     return fig
 
 def plot_overall_distribution_shared(df_left, df_right, model_name="", language=""):
-    order = ["female", "male", "male/female", "non-binary", "neutral"]
+    # Preferred legend order (others appended)
+    PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
+
+    order = PREFERRED_LEGEND_ORDER  # used for default ordering
     colors = {
         "female": "#F08080",
         "male": "#6495ED",
@@ -341,9 +361,12 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
     left = prep(df_left)
     right = prep(df_right)
 
-    # 🔹 pełna pula kategorii z obu df
-    all_genders = order  # zawsze bierzemy wszystkie możliwe kategorie, żeby legenda była kompletna
-    legend_shown = {g: False for g in all_genders}  # śledzimy, które wartości dodano do legendy
+    # Determine genders present and sort according to preferred order
+    genders_present = list(dict.fromkeys(list(left['gender']) + list(right['gender'])))
+    all_genders = [g for g in PREFERRED_LEGEND_ORDER if g in genders_present]
+    all_genders += [g for g in genders_present if g not in PREFERRED_LEGEND_ORDER]
+
+    legend_shown = {g: False for g in all_genders}
 
     fig = make_subplots(
         rows=1, cols=2,
@@ -360,7 +383,7 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
                     x=[g],
                     y=[left[left.gender == g]['count'].values[0]],
                     name=g,
-                    marker_color=colors[g],
+                    marker_color=colors.get(g, "#888"),
                     legendgroup=g,
                     showlegend=not legend_shown[g]
                 ),
@@ -376,9 +399,9 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
                     x=[g],
                     y=[right[right.gender == g]['count'].values[0]],
                     name=g,
-                    marker_color=colors[g],
+                    marker_color=colors.get(g, "#888"),
                     legendgroup=g,
-                    showlegend=not legend_shown[g]  # legendę pokazujemy tylko raz
+                    showlegend=not legend_shown[g]
                 ),
                 row=1, col=2
             )
@@ -395,12 +418,17 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
         yaxis2=dict(tickfont=dict(color="black", size=12)),
         font=dict(size=14, color="black"),
         legend=dict(
+            title=dict(text="Gender", font=dict(size=12, color="black")),
+            font=dict(size=12, color="black"),
             x=1.02,
             y=0.5,
             xanchor="left",
             yanchor="middle",
-            font=dict(size=12, color="black"),
-            title=dict(text="Gender", font=dict(size=12, color="black"))
+            orientation="v",
+            bgcolor="rgba(255,255,255,0)",
+            bordercolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            traceorder='normal'
         ),
         title=dict(
             text=f"Overall Gender Distribution - {model_name} ({language})",
@@ -413,8 +441,11 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
     return fig
 
 
+
 def plot_job_gender_radar_shared(df_left, df_right):
-    order = ["female", "male", "male/female", "non-binary", "neutral"]
+    # Preferred legend ordering
+    PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
+    # include non-binary after preferred (if present)
     colors = {
         "female": "#F08080",
         "male": "#6495ED",
@@ -425,9 +456,9 @@ def plot_job_gender_radar_shared(df_left, df_right):
 
     def prep_radar(df):
         # Map job titles to categories
-        df['category'] = df['job_title'].apply(map_job_to_category)
+        df['category'] = df['job_title_english'].apply(map_job_to_category)
         categories = df['category'].dropna().unique().tolist()
-        genders = [g for g in order if g in df['gender_from_desc'].unique()]
+        genders = [g for g in PREFERRED_LEGEND_ORDER if g in df['gender_from_desc'].unique()]
 
         counts = df.groupby(['category', 'gender_from_desc']).size().reset_index(name='count')
         total_per_gender = df.groupby('gender_from_desc').size().reset_index(name='total')
@@ -453,51 +484,54 @@ def plot_job_gender_radar_shared(df_left, df_right):
     # Full set of categories for both plots
     all_categories = list(dict.fromkeys(left_cats + right_cats))
 
-    # Full set of genders in order
-    all_genders = [g for g in order if g in set(left_genders) | set(right_genders)]
-
+    existing_genders = set(left_genders) | set(right_genders)
+    all_genders = [g for g in PREFERRED_LEGEND_ORDER if g in existing_genders]
     fig = make_subplots(
         rows=1, cols=2,
         subplot_titles=("Without RAG", "With RAG"),
         specs=[[{"type": "polar"}, {"type": "polar"}]]
     )
+    legend_used = set()
 
-    # Left radar
-    for gender in all_genders:
-        if gender in left_data:
-            # Fill missing categories with 0
-            vals = [left_data[gender][left_cats.index(cat)] if cat in left_cats else 0 for cat in all_categories]
-            vals.append(vals[0])
-            fig.add_trace(
-                go.Scatterpolar(
-                    r=vals,
-                    theta=all_categories + [all_categories[0]],
-                    fill='toself',
-                    name=gender,
-                    line=dict(color=colors.get(gender, "#A9A9A9")),
-                    legendgroup=gender,
-                    showlegend=True
-                ),
-                row=1, col=1
-            )
+    for gender in all_genders:  # preferred order
+        # Prepare left values
+        left_vals = [left_data[gender][left_cats.index(cat)] if gender in left_data and cat in left_cats else 0 for cat in all_categories]
 
-    # Right radar
-    for gender in all_genders:
-        if gender in right_data:
-            vals = [right_data[gender][right_cats.index(cat)] if cat in right_cats else 0 for cat in all_categories]
-            vals.append(vals[0])
-            fig.add_trace(
-                go.Scatterpolar(
-                    r=vals,
-                    theta=all_categories + [all_categories[0]],
-                    fill='toself',
-                    name=gender,
-                    line=dict(color=colors.get(gender, "#A9A9A9")),
-                    legendgroup=gender,
-                    showlegend=False  # only show legend once
-                ),
-                row=1, col=2
-            )
+        # Prepare right values
+        right_vals = [right_data[gender][right_cats.index(cat)] if gender in right_data and cat in right_cats else 0 for cat in all_categories]
+
+        # Determine which trace gets the legend
+        showlegend_left = showlegend_right = False
+        if sum(left_vals) > 0 or sum(right_vals) > 0:
+            if sum(left_vals) > 0:
+                showlegend_left = True
+            else:
+                showlegend_right = True
+
+        # Add left radar trace
+        left_vals.append(left_vals[0])
+        fig.add_trace(go.Scatterpolar(
+            r=left_vals,
+            theta=all_categories + [all_categories[0]],
+            fill='toself',
+            name=gender,
+            line=dict(color=colors.get(gender, "#A9A9A9")),
+            legendgroup=gender,
+            showlegend=showlegend_left
+        ), row=1, col=1)
+
+        # Add right radar trace
+        right_vals.append(right_vals[0])
+        fig.add_trace(go.Scatterpolar(
+            r=right_vals,
+            theta=all_categories + [all_categories[0]],
+            fill='toself',
+            name=gender,
+            line=dict(color=colors.get(gender, "#A9A9A9")),
+            legendgroup=gender,
+            showlegend=showlegend_right if not showlegend_left else False
+        ), row=1, col=2)
+
     all_values = []
 
     for gender in all_genders:
@@ -508,19 +542,36 @@ def plot_job_gender_radar_shared(df_left, df_right):
             vals = [right_data[gender][right_cats.index(cat)] if cat in right_cats else 0 for cat in all_categories]
             all_values.extend(vals)
 
-    # 2️⃣ Compute max value
     max_val = max(all_values) if all_values else 1  # fallback to 1 if empty
 
     fig.update_layout(
+        title=dict(
+            text=f"Proportion of Each Job Category Within Each Gender - {model} ({language})",
+            font=dict(size=20, color="black"),
+            x=0.5,
+            xanchor="center"
+        ),
         polar=dict(
             domain=dict(x=[0.05, 0.48]),
             radialaxis=dict(visible=True, range=[0, max_val*1.1])),
         polar2=dict(
             domain=dict(x=[0.58, 1.0]),
             radialaxis=dict(visible=True, range=[0, max_val*1.1])),
+        legend=dict(
+            title=dict(text="Gender", font=dict(size=12, color="black")),
+            font=dict(size=12, color="black"),
+            x=1.02,
+            y=0.5,
+            xanchor="left",
+            yanchor="middle",
+            orientation="v",
+            bgcolor="rgba(255,255,255,0)",
+            bordercolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            traceorder='normal'
+        ),
         showlegend=True,
-        height=480,
-        title="Job Distribution by Gender Across Categories"
+        height=480
     )
 
     return fig
@@ -600,12 +651,7 @@ def render_model_analysis(model, language, job_type_filter):
     plot_overall_distribution_shared(df_no_rag, df_rag, model_name=model, language=language),
     use_container_width=True
 )      
-    # -------- SPIDER CHART --------
-    st.markdown("#### Job Distribution by Gender Across Categories")
-    st.plotly_chart(
-    plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
-    use_container_width=True
-)
+
 
     # -------- DETAILS TOGGLE --------
     show_details = st.toggle(
@@ -628,10 +674,14 @@ def render_model_analysis(model, language, job_type_filter):
         # ------ SANKY DIAGRAMS --------
         fig = plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=selected_job, model_name=model, language=language)
         st.plotly_chart(fig, use_container_width=True)
-
+            # -------- SPIDER CHART --------
+        st.plotly_chart(
+        plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
+        use_container_width=True
+    )
        
         # -------- DELTA NEUTRAL --------
-        delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
+        delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag);
 
         st.plotly_chart(
             plot_neutral_delta_count_per_job(
