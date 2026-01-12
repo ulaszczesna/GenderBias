@@ -67,6 +67,26 @@ def neutralization_delta_per_job(df_no_rag, df_rag):
 
 
 
+def map_job_to_category(job_title):
+    """
+    Maps a job title to its category.
+    Job titles are matched case-insensitively.
+    """
+    job_categories = {
+        "Healthcare": ["nurse", "dietician", "pharmacist", "psychologist"],
+        "Social": ["school teacher", "librarian", "speech therapist", "secretary", "hr specialist"],
+        "Business & Law": ["chief executives", "judge", "accountant", "financial analyst"],
+        "Engineering": ["mathematician", "mechanical engineer", "software engineer", "aircraft pilot"],
+        "Services": ["cosmetologist", "dressmaker", "dining room staff", "taxi driver"],
+        "Blue-collar": ["firefighter", "carpenter", "fisher", "miner"]
+    }
+
+    job_lower = str(job_title).lower()
+    for category, jobs in job_categories.items():
+        if job_lower in jobs:
+            return category
+    return "Other"
+
 
 # mapowanie ramek danych
 dataframes = {
@@ -272,7 +292,7 @@ def plot_overall_distribution_shared(df_left, df_right):
                 ),
                 row=1, col=2
             )
-
+    
     fig.update_layout(
         height=450,
         barmode="group",
@@ -288,40 +308,121 @@ def plot_overall_distribution_shared(df_left, df_right):
 
     return fig
 
-def plot_overall_distribution(df, title, showlegend=True):
-    counts = df['gender_from_desc'].value_counts().reset_index()
-    counts.columns = ['gender', 'count']
-    counts = counts[counts['count'] > 0]
-    order = ["female", "male", "male/female", "non-binary", "neutral"]
-    true_order = [g for g in order if g in counts['gender'].values]
 
-    fig = px.bar(
-        counts,
-        x='gender',
-        y='count',
-        color='gender',
-        color_discrete_map={
-            "female": "#F08080",
-            "male": "#6495ED",
-            "neutral": "#A9A9A9",
-            "non-binary": "#FFE27B",
-            "male/female": "#9779AD",
-        },
-        category_orders={"gender": true_order}
+def plot_job_gender_radar_shared(df_left, df_right):
+    order = ["female", "male", "male/female", "non-binary", "neutral"]
+    colors = {
+        "female": "#F08080",
+        "male": "#6495ED",
+        "male/female": "#9779AD",
+        "non-binary": "#FFE27B",
+        "neutral": "#A9A9A9"
+    }
+
+    def prep_radar(df):
+        # Map job titles to categories
+        df['category'] = df['job_title'].apply(map_job_to_category)
+        categories = df['category'].dropna().unique().tolist()
+        genders = [g for g in order if g in df['gender_from_desc'].unique()]
+
+        counts = df.groupby(['category', 'gender_from_desc']).size().reset_index(name='count')
+        total_per_gender = df.groupby('gender_from_desc').size().reset_index(name='total')
+        df_percentage = counts.merge(total_per_gender, on='gender_from_desc')
+        df_percentage['percentage'] = (df_percentage['count'] / df_percentage['total']) * 100
+
+        data = {}
+        for gender in genders:
+            vals = []
+            for cat in categories:
+                val = df_percentage[(df_percentage['gender_from_desc']==gender) & 
+                                    (df_percentage['category']==cat)]['percentage']
+                vals.append(float(val) if not val.empty else 0)
+            vals.append(vals[0])  # close the circle
+            data[gender] = vals
+
+        categories_circle = categories + [categories[0]]
+        return data, categories_circle, genders
+
+    left_data, left_cats, left_genders = prep_radar(df_left)
+    right_data, right_cats, right_genders = prep_radar(df_right)
+
+    # Full set of categories for both plots
+    all_categories = list(dict.fromkeys(left_cats + right_cats))
+
+    # Full set of genders in order
+    all_genders = [g for g in order if g in set(left_genders) | set(right_genders)]
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("Without RAG", "With RAG"),
+        specs=[[{"type": "polar"}, {"type": "polar"}]]
     )
 
+    # Left radar
+    for gender in all_genders:
+        if gender in left_data:
+            # Fill missing categories with 0
+            vals = [left_data[gender][left_cats.index(cat)] if cat in left_cats else 0 for cat in all_categories]
+            vals.append(vals[0])
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=vals,
+                    theta=all_categories + [all_categories[0]],
+                    fill='toself',
+                    name=gender,
+                    line=dict(color=colors.get(gender, "#A9A9A9")),
+                    legendgroup=gender,
+                    showlegend=True
+                ),
+                row=1, col=1
+            )
+
+    # Right radar
+    for gender in all_genders:
+        if gender in right_data:
+            vals = [right_data[gender][right_cats.index(cat)] if cat in right_cats else 0 for cat in all_categories]
+            vals.append(vals[0])
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=vals,
+                    theta=all_categories + [all_categories[0]],
+                    fill='toself',
+                    name=gender,
+                    line=dict(color=colors.get(gender, "#A9A9A9")),
+                    legendgroup=gender,
+                    showlegend=False  # only show legend once
+                ),
+                row=1, col=2
+            )
+    all_values = []
+
+    for gender in all_genders:
+        if gender in left_data:
+            vals = [left_data[gender][left_cats.index(cat)] if cat in left_cats else 0 for cat in all_categories]
+            all_values.extend(vals)
+        if gender in right_data:
+            vals = [right_data[gender][right_cats.index(cat)] if cat in right_cats else 0 for cat in all_categories]
+            all_values.extend(vals)
+
+    # 2️⃣ Compute max value
+    max_val = max(all_values) if all_values else 1  # fallback to 1 if empty
+
     fig.update_layout(
-        title=title,
-        xaxis_title="Gender",
-        yaxis_title="Count",
-        height=400,
-        coloraxis_showscale=False,
-        font=dict(size=14, color="black"),
-        xaxis=dict(title=dict(font=dict(color="black")), tickfont=dict(color="black")),
-        yaxis=dict(title=dict(font=dict(color="black")), tickfont=dict(color="black"))
+        polar=dict(
+            domain=dict(x=[0.05, 0.48]),
+            radialaxis=dict(visible=True, range=[0, max_val*1.1])),
+        polar2=dict(
+            domain=dict(x=[0.58, 1.0]),
+            radialaxis=dict(visible=True, range=[0, max_val*1.1])),
+        showlegend=True,
+        height=480,
+        title="Job Distribution by Gender Across Categories"
     )
 
     return fig
+
+
+
 
 def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Descriptions per Job"):
     jobs_list = ["secretary", "dressmaker", "nurse", "psychologist", "librarian", "HR specialist", "dietician", 
@@ -398,7 +499,12 @@ def render_model_analysis(model, language, job_type_filter):
     plot_overall_distribution_shared(df_no_rag, df_rag),
     use_container_width=True
 )      
-
+    # -------- SPIDER CHART --------
+    st.markdown("#### Job Distribution by Gender Across Categories")
+    st.plotly_chart(
+    plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
+    use_container_width=True
+)
 
     # -------- DETAILS TOGGLE --------
     show_details = st.toggle(
