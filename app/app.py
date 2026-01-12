@@ -101,7 +101,10 @@ dataframes = {
     ("Llama", "EN", False): df_llama_english,
     ("Llama", "EN", True): df_llama_english_rag
 }
-def plot_gender_by_job(df, title, ax, job_type_filter="All"):
+
+
+
+def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All", model_name="", language=""):
     jobs_list = [
         "secretary", "dressmaker", "nurse", "psychologist", "librarian",
         "HR specialist", "dietician", "school teacher", "cosmetologist",
@@ -119,25 +122,23 @@ def plot_gender_by_job(df, title, ax, job_type_filter="All"):
             "Male-dominated": "male dominated",
             "Neutral": "neutral"
         }
-
         allowed_jobs = (
-            df[df["job_type"] == job_type_map[job_type_filter]]
+            df_no_rag[df_no_rag["job_type"] == job_type_map[job_type_filter]]
             ["job_title_english"]
             .unique()
             .tolist()
         )
-
         jobs_list = [job for job in jobs_list if job in allowed_jobs]
 
-    pivot = df.pivot_table(
-        index="job_title_english",
-        columns="gender_from_desc",
-        aggfunc="size",
-        fill_value=0
-    )
-
-    # 🔹 zachowanie kolejności + tylko wybrane zawody
-    pivot = pivot.reindex(jobs_list).dropna(how="all")
+    def prepare_pivot(df):
+        pivot = df.pivot_table(
+            index="job_title_english",
+            columns="gender_from_desc",
+            aggfunc="size",
+            fill_value=0
+        )
+        pivot = pivot.reindex(jobs_list).dropna(how="all")
+        return pivot
 
     colors = {
         "female": "#F08080",
@@ -148,72 +149,129 @@ def plot_gender_by_job(df, title, ax, job_type_filter="All"):
         "invalid": "#EEE7E7"
     }
 
-    pivot.plot(
-        kind="barh",
-        stacked=True,
-        legend=False,
-        ax=ax,
-        color=[colors.get(col, "black") for col in pivot.columns]
+    pivot_no_rag = prepare_pivot(df_no_rag)
+    pivot_rag = prepare_pivot(df_rag)
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        shared_yaxes=True,
+        horizontal_spacing=0.15,  # odstęp między wykresami
+        subplot_titles=("Without RAG", "With RAG")
     )
+# Lista wszystkich genderów występujących w obu wykresach
+    all_genders = list(set(pivot_no_rag.columns) | set(pivot_rag.columns))
 
-    ax.set_title(title, fontsize=17)
-    ax.set_xlabel("Number of Occurrences", fontsize=14)
-    ax.set_ylabel("Job Title", fontsize=14)
-    ax.tick_params(axis='x', labelsize=15)
-    ax.tick_params(axis='y', labelsize=15)
+    # Trzymamy info, które gendery już dodaliśmy do legendy
+    legend_shown = {gender: False for gender in all_genders}
 
+    # 🔹 Wykres Without RAG
+    for gender in pivot_no_rag.columns:
+        fig.add_trace(
+            go.Bar(
+                y=pivot_no_rag.index,
+                x=pivot_no_rag[gender],
+                name=gender,
+                orientation='h',
+                marker_color=colors.get(gender, "black"),
+                showlegend=not legend_shown[gender]  # pokaż legendę tylko raz
+            ),
+            row=1, col=1
+        )
+        legend_shown[gender] = True  # oznaczamy, że legendę dodano
+
+    # 🔹 Wykres With RAG
+    for gender in pivot_rag.columns:
+        fig.add_trace(
+            go.Bar(
+                y=pivot_rag.index,
+                x=pivot_rag[gender],
+                name=gender,
+                orientation='h',
+                marker_color=colors.get(gender, "black"),
+                showlegend=not legend_shown[gender]  # tylko te, które jeszcze nie były w legendzie
+            ),
+            row=1, col=2
+        )
+        legend_shown[gender] = True
+
+
+    fig.update_layout(
+    barmode='stack',
+    title=dict(
+        text=f"Gender Distribution by Job Title - {model_name} ({language})",
+        font=dict(size=20, color="black"),
+        x=0.5,  # środkowanie tytułu głównego
+        xanchor="center"
+    ),
+    font=dict(size=14, color="black"),
+    height=600,
+    width=1400,
+    xaxis=dict(
+        title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+        tickfont=dict(color="black", size=12)
+    ),
+    xaxis2=dict(
+        title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+        tickfont=dict(color="black", size=12)
+    ),
+    yaxis=dict(
+        title=dict(text="Job Title", font=dict(color="black", size=14)),
+        tickfont=dict(color="black", size=12)
+    ),
+    yaxis2=dict(
+        tickfont=dict(color="black", size=12)
+    ),
+    legend=dict(
+        title=dict(text="Gender", font=dict(size=12, color="black")),
+        font=dict(size=12, color="black"),
+        x=1.02,  # przesunięcie w prawo
+        y=0.5,   # wyśrodkowanie pionowe
+        xanchor="left",
+        yanchor="middle"
+    ),
+    margin=dict(l=150, r=150, t=100, b=50)
+)
+
+
+    return fig
 
 # Funkcja do rysowania wykresu sankey'a
-def plot_gender_sankey(
-    df,
-    job_title=None,
-    title=""
-):
-    if job_title and job_title != "All":
-        df = df[df["job_title_english"] == job_title]
+def plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=None, model_name="", language=""):
+    # Funkcja pomocnicza do stworzenia Sankey dla pojedynczego df
+    def create_sankey(df, title=""):
+        if job_title and job_title != "All":
+            df = df[df["job_title_english"] == job_title]
 
-    flow = (
-        df.groupby(["gender_from_desc", "gender_from_prompt"])
-        .size()
-        .reset_index(name="count")
-    )
+        flow = (
+            df.groupby(["gender_from_desc", "gender_from_prompt"])
+            .size()
+            .reset_index(name="count")
+        )
 
-    source_nodes = flow["gender_from_desc"].unique().tolist()
-    target_nodes = flow["gender_from_prompt"].unique().tolist()
+        source_nodes = flow["gender_from_desc"].unique().tolist()
+        target_nodes = flow["gender_from_prompt"].unique().tolist()
+        labels = source_nodes + target_nodes
 
-    labels = source_nodes + target_nodes
+        source_idx = {g: i for i, g in enumerate(source_nodes)}
+        target_idx = {g: i + len(source_nodes) for i, g in enumerate(target_nodes)}
 
-    source_idx = {g: i for i, g in enumerate(source_nodes)}
-    target_idx = {
-        g: i + len(source_nodes)
-        for i, g in enumerate(target_nodes)
-    }
+        sources = flow["gender_from_desc"].map(source_idx).tolist()
+        targets = flow["gender_from_prompt"].map(target_idx).tolist()
+        values = flow["count"].tolist()
 
-    sources = flow["gender_from_desc"].map(source_idx).tolist()
-    targets = flow["gender_from_prompt"].map(target_idx).tolist()
-    values = flow["count"].tolist()
+        color_map = {
+            "female": "#F08080",
+            "male": "#6495ED",
+            "neutral": "#A9A9A9",
+            "non-binary": "#FFE27B",
+            "male/female": "#9779AD",
+            "invalid": "#EEE7E7"
+        }
 
-    color_map = {
-        "female": "#F08080",
-        "male": "#6495ED",
-        "neutral": "#A9A9A9",
-        "non-binary": "#FFE27B",
-        "male/female": "#9779AD",
-        "invalid": "#EEE7E7"
-    }
+        node_colors = [color_map.get(label, "#7A337F") for label in labels]
+        link_colors = [color_map.get(g, "#CCCCCC") for g in flow["gender_from_desc"]]
 
-    node_colors = [
-        color_map.get(label, "#7A337F")
-        for label in labels
-    ]
-
-    link_colors = [
-        color_map.get(g, "#CCCCCC")
-        for g in flow["gender_from_desc"]
-    ]
-
-    fig = go.Figure(
-        go.Sankey(
+        sankey = go.Sankey(
             node=dict(
                 label=labels,
                 color=node_colors,
@@ -226,20 +284,46 @@ def plot_gender_sankey(
                 target=targets,
                 value=values,
                 color=link_colors
-            )
+            ),
+            textfont=dict(color="black", size=12)
         )
+
+        return sankey, title
+
+    # Tworzymy subploty z 1 wierszem i 2 kolumnami
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=("Without RAG", "With RAG"),
+        specs=[[{"type": "domain"}, {"type": "domain"}]],  # dla Sankey
+        horizontal_spacing=0.2
     )
-    fig.update_traces(textfont_size=12, textfont_color="black")
 
+    # Dodajemy Sankey do pierwszego wykresu
+    sankey1, title1 = create_sankey(df_no_rag, "Without RAG")
+    fig.add_trace(sankey1, row=1, col=1)
 
+    # Dodajemy Sankey do drugiego wykresu
+    sankey2, title2 = create_sankey(df_rag, "With RAG")
+    fig.add_trace(sankey2, row=1, col=2)
+
+    # Ustawienia layoutu
     fig.update_layout(
-        title_text=title,
-        font_size=11,
-        font_color="black"
+        title=dict(
+            text=f"Gender Flow Sankey Diagram - {model_name} ({language})",
+            font=dict(size=20, color="black"),
+            x=0.5,  # środkowanie tytułu głównego
+            xanchor="center"
+        ),
+        font=dict(size=12, color="black"),
+        height=500,
+        width=1000,
+        showlegend=False  # Sankey ma własną legendę w node labels
     )
 
     return fig
-def plot_overall_distribution_shared(df_left, df_right):
+
+def plot_overall_distribution_shared(df_left, df_right, model_name="", language=""):
     order = ["female", "male", "male/female", "non-binary", "neutral"]
     colors = {
         "female": "#F08080",
@@ -257,15 +341,18 @@ def plot_overall_distribution_shared(df_left, df_right):
     left = prep(df_left)
     right = prep(df_right)
 
-    # 👉 pełna pula kategorii z obu df
-    all_genders = [g for g in order if g in set(left.gender) | set(right.gender)]
+    # 🔹 pełna pula kategorii z obu df
+    all_genders = order  # zawsze bierzemy wszystkie możliwe kategorie, żeby legenda była kompletna
+    legend_shown = {g: False for g in all_genders}  # śledzimy, które wartości dodano do legendy
 
     fig = make_subplots(
         rows=1, cols=2,
         subplot_titles=("Without RAG", "With RAG"),
-        shared_yaxes=True
+        shared_yaxes=True,
+        horizontal_spacing=0.15
     )
 
+    # 🔹 Wykres lewy
     for g in all_genders:
         if g in left.gender.values:
             fig.add_trace(
@@ -275,11 +362,14 @@ def plot_overall_distribution_shared(df_left, df_right):
                     name=g,
                     marker_color=colors[g],
                     legendgroup=g,
-                    showlegend=True
+                    showlegend=not legend_shown[g]
                 ),
                 row=1, col=1
             )
+            legend_shown[g] = True
 
+    # 🔹 Wykres prawy
+    for g in all_genders:
         if g in right.gender.values:
             fig.add_trace(
                 go.Bar(
@@ -288,22 +378,36 @@ def plot_overall_distribution_shared(df_left, df_right):
                     name=g,
                     marker_color=colors[g],
                     legendgroup=g,
-                    showlegend=False  # 👈 tylko raz w legendzie
+                    showlegend=not legend_shown[g]  # legendę pokazujemy tylko raz
                 ),
                 row=1, col=2
             )
-    
+            legend_shown[g] = True
+
+    # 🔹 Ustawienia layoutu
     fig.update_layout(
-        height=450,
+        height=500,
+        width=1200,
         barmode="group",
+        xaxis=dict(title="Gender", tickfont=dict(color="black", size=12)),
+        xaxis2=dict(title="Gender", tickfont=dict(color="black", size=12)),
+        yaxis=dict(title="Count", tickfont=dict(color="black", size=12)),
+        yaxis2=dict(tickfont=dict(color="black", size=12)),
+        font=dict(size=14, color="black"),
         legend=dict(
             x=1.02,
             y=0.5,
-            xanchor="left"
+            xanchor="left",
+            yanchor="middle",
+            font=dict(size=12, color="black"),
+            title=dict(text="Gender", font=dict(size=12, color="black"))
         ),
-        xaxis_title="Gender",
-        yaxis_title="Count",
-        font=dict(size=14, color="black")
+        title=dict(
+            text=f"Overall Gender Distribution - {model_name} ({language})",
+            font=dict(size=20, color="black"),
+            x=0.5,
+            xanchor="center"
+        )
     )
 
     return fig
@@ -449,7 +553,12 @@ def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Desc
     )
 
     fig.update_layout(
-        title=title,
+        title=dict(
+            text=title,
+            font=dict(size=20, color="black"),
+            x=0.5,
+            xanchor="center"
+        ),
         xaxis_title="Δ Neutral Count (RAG − No-RAG)",
         yaxis_title="Job Title",
         height=500,
@@ -479,24 +588,16 @@ def render_model_analysis(model, language, job_type_filter):
     st.subheader(f"{model}")
 
     # -------- BAR CHARTS --------
-    st.markdown("#### Gender Distribution by Job Title")
-    fig, axes = plt.subplots(1, 2, figsize=(21, 10), sharey=True)
+    # st.markdown("#### Gender Distribution by Job Title")
+    fig = plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter, model_name=model, language=language)
+    st.plotly_chart(fig, use_container_width=True)
 
-    plot_gender_by_job(df_no_rag, "Without RAG", axes[0], job_type_filter)
-    plot_gender_by_job(df_rag, "With RAG", axes[1], job_type_filter)
 
-    handles, labels = axes[1].get_legend_handles_labels()
-
-    fig.legend(handles, labels, title="Gender",
-               loc="center right", fontsize=15, title_fontsize=17)
-
-    plt.tight_layout(rect=[0, 0, 0.9, 1])
-    st.pyplot(fig)
 
     # -------- OVERALL DISTRIBUTION --------
-    st.markdown("#### Overall Gender Distribution")
+    # st.markdown("#### Overall Gender Distribution")
     st.plotly_chart(
-    plot_overall_distribution_shared(df_no_rag, df_rag),
+    plot_overall_distribution_shared(df_no_rag, df_rag, model_name=model, language=language),
     use_container_width=True
 )      
     # -------- SPIDER CHART --------
@@ -524,21 +625,11 @@ def render_model_analysis(model, language, job_type_filter):
             job_options,
             key=f"job_{language}_{model}"
         )
+        # ------ SANKY DIAGRAMS --------
+        fig = plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=selected_job, model_name=model, language=language)
+        st.plotly_chart(fig, use_container_width=True)
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.plotly_chart(
-                plot_gender_sankey(df_no_rag, selected_job, "Without RAG"),
-                use_container_width=True
-            )
-
-        with col2:
-            st.plotly_chart(
-                plot_gender_sankey(df_rag, selected_job, "With RAG"),
-                use_container_width=True
-            )
-
+       
         # -------- DELTA NEUTRAL --------
         delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag)
 
@@ -587,3 +678,4 @@ with col_main:
     for tab, model in zip(model_tabs, models):
         with tab:
             render_model_analysis(model, language, job_type_filter)
+
