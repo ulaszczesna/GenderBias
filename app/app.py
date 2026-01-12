@@ -23,7 +23,6 @@ df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.cs
 
 
 
-
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
     if job_type_filter == "All":
@@ -359,10 +358,11 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
                     name=g,
                     marker_color=colors[g],
                     legendgroup=g,
-                    showlegend=False  # legendę pokazujemy tylko raz
+                    showlegend=not legend_shown[g]  # legendę pokazujemy tylko raz
                 ),
                 row=1, col=2
             )
+            legend_shown[g] = True
 
     # 🔹 Ustawienia layoutu
     fig.update_layout(
