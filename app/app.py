@@ -20,8 +20,8 @@ df_deepseek_english = pd.read_csv("results/english/deepseek_english_extracted_ch
 df_llama_english_rag = pd.read_csv("results/english/rag/llama_english_rag_checked.csv", sep=';')
 df_llama_english = pd.read_csv("results/english/llama3_english_extracted_checked.csv", sep=';')
 df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.csv", sep=';')
-
-
+df_mistral_french_rag = pd.read_csv("results/french/rag/mistral7b_french_extracted_checked.csv", sep=';')
+df_mistral_english = pd.read_csv("results/french/mistral7b_french_extracted_checked.csv", spe=';')
 
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
@@ -99,7 +99,9 @@ dataframes = {
     ("Deepseek", "EN", False): df_deepseek_english,
     ("Deepseek", "EN", True): df_deepseek_english_rag,
     ("Llama", "EN", False): df_llama_english,
-    ("Llama", "EN", True): df_llama_english_rag
+    ("Llama", "EN", True): df_llama_english_rag,
+    ("Mistral", "FR", False): df_mistral_french,
+    ("Mistral", "FR", True): df_mistral_french_rag
 }
 
 
@@ -707,7 +709,7 @@ col_filters, col_main = st.columns([1, 5])
 with col_filters:
     st.subheader("Filters")
 
-    language = st.selectbox("Language", ["EN", "PL"], index=0)
+    language = st.selectbox("Language", ["EN", "PL", "FR"], index=0)
 
     job_type_filter = st.selectbox(
         "Job group",
@@ -731,4 +733,5 @@ with col_main:
     for tab, model in zip(model_tabs, models):
         with tab:
             render_model_analysis(model, language, job_type_filter)
+
 
