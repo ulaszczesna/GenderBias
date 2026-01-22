@@ -10,7 +10,6 @@ print(os.getcwd())
 # Wczytanie danych
 df_bielik_polish = pd.read_csv("results/polish/bielik_polish_extracted_checked.csv", sep=';')
 df_mistral_polish = pd.read_csv("results/polish/mistral_polish_extracted_checked.csv", sep=';')
-df_gpt5_polish = pd.read_csv("results/polish/gpt5_polish_extracted_checked.csv", sep=';')
 df_bielik_polish_rag = pd.read_csv("results/polish/rag/bielik_polish_rag_checked.csv", sep=';')
 df_mistral_polish_rag = pd.read_csv("results/polish/rag/mistral_polish_rag_checked.csv", sep=';')
 df_mistral_english_rag = pd.read_csv("results/english/rag/mistral_english_rag_checked.csv", sep=';')
@@ -19,9 +18,8 @@ df_deepseek_english_rag = pd.read_csv("results/english/rag/deepseek_english_rag_
 df_deepseek_english = pd.read_csv("results/english/deepseek_english_extracted_checked.csv", sep=';')
 df_llama_english_rag = pd.read_csv("results/english/rag/llama_english_rag_checked.csv", sep=';')
 df_llama_english = pd.read_csv("results/english/llama3_english_extracted_checked.csv", sep=';')
-df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.csv", sep=';')
 df_mistral_french_rag = pd.read_csv("results/french/rag/mistral7b_french_extracted_checked.csv", sep=';')
-df_mistral_english = pd.read_csv("results/french/mistral7b_french_extracted_checked.csv", spe=';')
+df_mistral_french = pd.read_csv("results/french/mistral7b_french_extracted_checked.csv", sep=';')
 
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
