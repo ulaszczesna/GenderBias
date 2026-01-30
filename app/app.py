@@ -18,8 +18,10 @@ df_deepseek_english_rag = pd.read_csv("results/english/rag/deepseek_english_rag_
 df_deepseek_english = pd.read_csv("results/english/deepseek_english_extracted_checked.csv", sep=';')
 df_llama_english_rag = pd.read_csv("results/english/rag/llama_english_rag_checked.csv", sep=';')
 df_llama_english = pd.read_csv("results/english/llama3_english_extracted_checked.csv", sep=';')
-df_mistral_french_rag = pd.read_csv("results/french/rag/mistral7b_french_extracted_checked.csv", sep=';')
-df_mistral_french = pd.read_csv("results/french/mistral7b_french_extracted_checked.csv", sep=';')
+df_mistral_french_rag = pd.read_csv("results/french/rag/mistral_french_extracted_checked.csv", sep=';')
+df_mistral_french = pd.read_csv("results/french/mistral_french_extracted_checked.csv", sep=';')
+df_llama_french = pd.read_csv("results/french/llama3_french_extracted_checked.csv", sep=';')
+df_llama_french_rag = pd.read_csv("results/french/rag/llama3_french_extracted_checked.csv", sep=';')
 
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
@@ -73,7 +75,7 @@ def map_job_to_category(job_title):
     job_categories = {
         "Healthcare": ["nurse", "dietician", "pharmacist", "psychologist"],
         "Social": ["school teacher", "librarian", "speech therapist", "secretary", "hr specialist"],
-        "Business & Law": ["chief executives", "judge", "accountant", "financial analyst"],
+        "Business & Law": ["chief executive", "judge", "accountant", "financial analyst"],
         "Engineering": ["mathematician", "mechanical engineer", "software engineer", "aircraft pilot"],
         "Services": ["cosmetologist", "dressmaker", "dining room staff", "taxi driver"],
         "Blue-collar": ["firefighter", "carpenter", "fisher", "miner"]
@@ -99,7 +101,9 @@ dataframes = {
     ("Llama", "EN", False): df_llama_english,
     ("Llama", "EN", True): df_llama_english_rag,
     ("Mistral", "FR", False): df_mistral_french,
-    ("Mistral", "FR", True): df_mistral_french_rag
+    ("Mistral", "FR", True): df_mistral_french_rag,
+    ("Llama", "FR", False): df_llama_french,
+    ("Llama", "FR", True): df_llama_french_rag,
 }
 
 
@@ -110,7 +114,7 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
         "HR specialist", "dietician", "school teacher", "cosmetologist",
         "speech therapist", "software engineer", "firefighter", "carpenter",
         "taxi driver", "aircraft pilot", "mechanical engineer",
-        "chief executives", "miner", "mathematician", "fisher",
+        "chief executive", "miner", "mathematician", "fisher",
         "accountant", "judge", "pharmacist",
         "financial analyst", "dining room staff"
     ]

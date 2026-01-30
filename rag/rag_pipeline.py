@@ -32,24 +32,17 @@ class RAGPipeline:
         return all_chunks
 
     def retrieve_chunks(self, query_text, top_n=5):
-        """Zwraca top-N najbardziej podobnych chunków z ChromaDB dla zapytania"""
         query_emb = self.generator.generate_embeddings([query_text])[0]
         results = self.chroma.query(query_emb, n_results=top_n)
         return results
 
 
 if __name__ == "__main__":
-    pdf_files = ["data/inclusivity1.pdf", "data/inclusivity2.pdf", "data/inclusivity3.pdf"]
+    pdf_files = ["data/inclusivity-french1.pdf", "data/inclusivity-french2.pdf", "data/inclusivity-french4.pdf", "data/inclusivity-french5.pdf"]
     rag = RAGPipeline(pdf_files)
 
-    rag.process_pdfs(chunk_size=500, overlap=50)
+    rag.process_pdfs(chunk_size=500, overlap=100)
 
     query_text = "Best practices to ensure that job roles are gender-neutral, promoting inclusion of male, female, and non-binary candidates, using correct pronouns and avoiding selection based on stereotypes."
-    top_chunks = rag.retrieve_chunks(query_text, top_n=20)
-
-    with open("chunks.txt", "w", encoding="utf-8") as f:
-        for i, chunk in enumerate(top_chunks, 1):
-            output = f"Chunk {i}:\n{chunk}\n{'-'*40}\n"
-            print(output)      # nadal wypisuje w konsoli
-            f.write(output)
-
+    query_text_fr = "Pratiques pour des descriptions de poste inclusives, neutres du point de vue du genre, respectant les pronoms de toutes les identités et évitant stéréotypes et biais de genre."
+    top_chunks = rag.retrieve_chunks(query_text_fr, top_n=20)

@@ -1,5 +1,6 @@
 
 from sentence_transformers import SentenceTransformer
+import numpy as np
 class EmbeddingGenerator:
     def __init__(self, model_name: str):
         self.model_name = model_name
@@ -10,5 +11,5 @@ class EmbeddingGenerator:
         return embeddings
     
     def save_embeddings(self, texts: list[str], embeddings: list[list[float]], output_path: str):
-        import numpy as np
+
         np.savez_compressed(output_path, texts=texts, embeddings=embeddings)

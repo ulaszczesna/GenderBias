@@ -6,3 +6,5 @@
 __pycache__/
 *.py
 chroma_db/
+/visualizations/praca/
+/notebooks/

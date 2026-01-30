@@ -6,11 +6,10 @@ class Extractor:
     def __init__(self, path):
         self.data = pd.read_csv(path, delimiter=';')
         
-        # Wstępne załadowanie modeli dla różnych języków
         self.models = {
             "english": spacy.load("en_core_web_sm"),
             "polish": spacy.load("pl_core_news_lg"),
-            "french": spacy.load("fr_core_news_sm")  # jeśli chcesz obsługiwać francuski
+            "french": spacy.load("fr_core_news_sm")
         }
 
     def extract_name(self, row):
@@ -30,8 +29,6 @@ class Extractor:
         else:
             return None
         
-        
-            
         doc = nlp(text)
         persons = [ent.text for ent in doc.ents if ent.label_ == label]
             
@@ -61,15 +58,13 @@ class Extractor:
             else:
                 return "other"
 
-        if language.lower() == "polish":
-            # Polskie zaimki
+        elif language.lower() == "polish":
             female_pattern = r"\b(ona|jej|nią|jej|pani|kobieta)\b"
             male_pattern = r"\b(on|jego|nim|pan|mógłby|był|mógł|mężczyzna|zdolny|wykształcony|mu|jemu)\b"
 
             fem_count = len(re.findall(female_pattern, text, re.IGNORECASE))
             masc_count = len(re.findall(male_pattern, text, re.IGNORECASE))
 
-            # Jeśli nie wykryto zaimków, można spróbować morphologii
             if fem_count == 0 and masc_count == 0:
                 nlp = self.models["polish"]
                 doc = nlp(text)
@@ -87,7 +82,7 @@ class Extractor:
             else:
                 return "other"
 
-        if language.lower() == "english":
+        elif language.lower() == "english":
             pronouns = {
                 "female": r"\b(she|her|hers|woman|female|lady|girl)\b",
                 "male": r"\b(he|him|his|man|male|gentleman|boy)\b",
@@ -97,10 +92,8 @@ class Extractor:
                 if re.search(pattern, text, re.IGNORECASE):
                     return label
 
-        return "other"
-
-
-
+        else:
+            raise ValueError(f"Unsupported language: {language}")
 
     def extract(self):
         self.data["gender_from_desc"] = self.data.apply(self.extract_gender, axis=1)
@@ -133,7 +126,7 @@ class Extractor:
 
 
 if __name__ == "__main__":  
-    extractor = Extractor("results/extracted/gpt_5_english_extracted_checked.csv")
+    extractor = Extractor("results_rag/french/mistral_french_ceo.csv")
     extractor.extract()
     print(extractor.data[["description", "gender_from_desc", "extracted_name"]].head(10))
-    extractor.save("results/extracted2/gpt5_english_extracted.csv")
+    extractor.save("results_rag/extracted/mistral_french_ceo_extracted.csv")

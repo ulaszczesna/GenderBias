@@ -11,7 +11,6 @@ class PDFExtractor:
         with fitz.open(self.path) as doc:
             for page in doc:
                 page_text = page.get_text()
-                print(f"{self.path} | Page {page.number}: {len(page_text)} chars")  # <-- print długości tekstu każdej strony
                 texts.append(page_text)
 
         full_text = "".join(texts).strip()
@@ -20,20 +19,10 @@ class PDFExtractor:
             ocr_texts = []
             for i, page in enumerate(pages):
                 page_text = pytesseract.image_to_string(page)
-                print(f"Page {i}: {len(page_text)} chars")
                 ocr_texts.append(page_text)
             full_text = "\n".join(ocr_texts)
 
         return full_text
-    
-    # def chunk_text(self, text):
-    #     chunks = []
-    #     start = 0
-    #     while start < len(text):
-    #         end = start + self.chunk_size
-    #         chunks.append(text[start:end])
-    #         start += self.chunk_size - self.overlap
-    #     return chunks
     
     def chunk_text(self, text):
         paragraphs = text.split('\n')
@@ -44,20 +33,15 @@ class PDFExtractor:
             paragraph = paragraph.strip()
             if not paragraph:
                 continue
-                
-            # Jeśli dodanie akapitu nie przekroczy chunk_size, dodajemy go
+
             if len(current_chunk) + len(paragraph) + 1 <= self.chunk_size:
                 current_chunk += (paragraph + " ")
             else:
-                # Jeśli aktualny chunk ma już treść, zapisujemy go
                 if current_chunk:
                     chunks.append(current_chunk.strip())
-                
-                # Nowy chunk zaczynamy od bieżącego akapitu
-                # (Jeśli sam akapit jest większy niż chunk_size, warto go pociąć na zdania)
+            
                 current_chunk = paragraph + " "
 
-        # Dodajemy ostatni fragment
         if current_chunk:
             chunks.append(current_chunk.strip())
         return chunks
