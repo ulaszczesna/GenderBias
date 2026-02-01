@@ -119,7 +119,7 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
         "financial analyst", "dining room staff"
     ]
 
-    # 🔹 filtrowanie po job_type
+   
     if job_type_filter != "All":
         job_type_map = {
             "Female-dominated": "female dominated",
@@ -156,7 +156,7 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
     pivot_no_rag = prepare_pivot(df_no_rag)
     pivot_rag = prepare_pivot(df_rag)
 
-    # Ensure legend order: preferred first, others appended
+ 
     PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
     def sort_genders(genders):
         gset = list(dict.fromkeys(genders))
@@ -166,7 +166,7 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
 
     all_genders = sort_genders(list(set(pivot_no_rag.columns) | set(pivot_rag.columns)))
 
-    # Create subplot figure (restore fig definition)
+ 
     fig = make_subplots(
         rows=1, cols=2,
         shared_yaxes=True,
@@ -174,10 +174,10 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
         subplot_titles=("Without RAG", "With RAG")
     )
 
-    # Trzymamy info, które gendery już dodaliśmy do legendy
+
     legend_shown = {gender: False for gender in all_genders}
 
-    # 🔹 Wykres Without RAG (add traces in preferred order)
+  
     for gender in all_genders:
         if gender in pivot_no_rag.columns:
             fig.add_trace(
@@ -192,9 +192,9 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
                 ),
                 row=1, col=1
             )
-            legend_shown[gender] = True  # oznaczamy, że legendę dodano
+            legend_shown[gender] = True  
 
-    # 🔹 Wykres With RAG (same order)
+
     for gender in all_genders:
         if gender in pivot_rag.columns:
             fig.add_trace(
@@ -258,7 +258,7 @@ def plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter="All",
 
 # Funkcja do rysowania wykresu sankey'a
 def plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=None, model_name="", language=""):
-    # Funkcja pomocnicza do stworzenia Sankey dla pojedynczego df
+  
     def create_sankey(df, title=""):
         if job_title and job_title != "All":
             df = df[df["job_title_english"] == job_title]
@@ -311,44 +311,43 @@ def plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=None, model_name=""
 
         return sankey, title
 
-    # Tworzymy subploty z 1 wierszem i 2 kolumnami
+   
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=("Without RAG", "With RAG"),
-        specs=[[{"type": "domain"}, {"type": "domain"}]],  # dla Sankey
+        specs=[[{"type": "domain"}, {"type": "domain"}]], 
         horizontal_spacing=0.2
     )
 
-    # Dodajemy Sankey do pierwszego wykresu
+   
     sankey1, title1 = create_sankey(df_no_rag, "Without RAG")
     fig.add_trace(sankey1, row=1, col=1)
 
-    # Dodajemy Sankey do drugiego wykresu
     sankey2, title2 = create_sankey(df_rag, "With RAG")
     fig.add_trace(sankey2, row=1, col=2)
 
-    # Ustawienia layoutu
+
     fig.update_layout(
         title=dict(
             text=f"Gender Flow Sankey Diagram - {model_name} ({language})",
             font=dict(size=20, color="black"),
-            x=0.5,  # środkowanie tytułu głównego
+            x=0.5,  
             xanchor="center"
         ),
         font=dict(size=12, color="black"),
         height=500,
         width=1000,
-        showlegend=False  # Sankey ma własną legendę w node labels
+        showlegend=False  
     )
 
     return fig
 
 def plot_overall_distribution_shared(df_left, df_right, model_name="", language=""):
-    # Preferred legend order (others appended)
+  
     PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
 
-    order = PREFERRED_LEGEND_ORDER  # used for default ordering
+    order = PREFERRED_LEGEND_ORDER  
     colors = {
         "female": "#F08080",
         "male": "#6495ED",
@@ -365,7 +364,7 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
     left = prep(df_left)
     right = prep(df_right)
 
-    # Determine genders present and sort according to preferred order
+
     genders_present = list(dict.fromkeys(list(left['gender']) + list(right['gender'])))
     all_genders = [g for g in PREFERRED_LEGEND_ORDER if g in genders_present]
     all_genders += [g for g in genders_present if g not in PREFERRED_LEGEND_ORDER]
@@ -379,7 +378,7 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
         horizontal_spacing=0.15
     )
 
-    # 🔹 Wykres lewy
+
     for g in all_genders:
         if g in left.gender.values:
             fig.add_trace(
@@ -395,7 +394,7 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
             )
             legend_shown[g] = True
 
-    # 🔹 Wykres prawy
+ 
     for g in all_genders:
         if g in right.gender.values:
             fig.add_trace(
@@ -411,7 +410,7 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
             )
             legend_shown[g] = True
 
-    # 🔹 Ustawienia layoutu
+
     fig.update_layout(
         height=500,
         width=1200,
@@ -447,9 +446,9 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
 
 
 def plot_job_gender_radar_shared(df_left, df_right):
-    # Preferred legend ordering
+
     PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
-    # include non-binary after preferred (if present)
+ 
     colors = {
         "female": "#F08080",
         "male": "#6495ED",
@@ -459,7 +458,7 @@ def plot_job_gender_radar_shared(df_left, df_right):
     }
 
     def prep_radar(df):
-        # Map job titles to categories
+   
         df['category'] = df['job_title_english'].apply(map_job_to_category)
         categories = df['category'].dropna().unique().tolist()
         genders = [g for g in PREFERRED_LEGEND_ORDER if g in df['gender_from_desc'].unique()]
@@ -476,7 +475,7 @@ def plot_job_gender_radar_shared(df_left, df_right):
                 val = df_percentage[(df_percentage['gender_from_desc']==gender) & 
                                     (df_percentage['category']==cat)]['percentage']
                 vals.append(float(val) if not val.empty else 0)
-            vals.append(vals[0])  # close the circle
+            vals.append(vals[0]) 
             data[gender] = vals
 
         categories_circle = categories + [categories[0]]
@@ -485,7 +484,6 @@ def plot_job_gender_radar_shared(df_left, df_right):
     left_data, left_cats, left_genders = prep_radar(df_left)
     right_data, right_cats, right_genders = prep_radar(df_right)
 
-    # Full set of categories for both plots
     all_categories = list(dict.fromkeys(left_cats + right_cats))
 
     existing_genders = set(left_genders) | set(right_genders)
@@ -497,14 +495,13 @@ def plot_job_gender_radar_shared(df_left, df_right):
     )
     legend_used = set()
 
-    for gender in all_genders:  # preferred order
-        # Prepare left values
+    for gender in all_genders:  
         left_vals = [left_data[gender][left_cats.index(cat)] if gender in left_data and cat in left_cats else 0 for cat in all_categories]
 
-        # Prepare right values
+       
         right_vals = [right_data[gender][right_cats.index(cat)] if gender in right_data and cat in right_cats else 0 for cat in all_categories]
 
-        # Determine which trace gets the legend
+       
         showlegend_left = showlegend_right = False
         if sum(left_vals) > 0 or sum(right_vals) > 0:
             if sum(left_vals) > 0:
@@ -512,7 +509,7 @@ def plot_job_gender_radar_shared(df_left, df_right):
             else:
                 showlegend_right = True
 
-        # Add left radar trace
+       
         left_vals.append(left_vals[0])
         fig.add_trace(go.Scatterpolar(
             r=left_vals,
@@ -525,7 +522,7 @@ def plot_job_gender_radar_shared(df_left, df_right):
             hovertemplate="%{theta}<br>%{r:.2f}%<extra>%{fullData.name}</extra>"
         ), row=1, col=1)
 
-        # Add right radar trace
+       
         right_vals.append(right_vals[0])
         fig.add_trace(go.Scatterpolar(
             r=right_vals,
@@ -548,7 +545,7 @@ def plot_job_gender_radar_shared(df_left, df_right):
             vals = [right_data[gender][right_cats.index(cat)] if cat in right_cats else 0 for cat in all_categories]
             all_values.extend(vals)
 
-    max_val = max(all_values) if all_values else 1  # fallback to 1 if empty
+    max_val = max(all_values) if all_values else 1  
 
     fig.update_layout(
         title=dict(
@@ -600,7 +597,7 @@ def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Desc
         x="delta_neutral",
         y="job_title_english",
         orientation="h",
-        color_discrete_sequence=["#A9A9A9"],  # jednolity kolor słupków
+        color_discrete_sequence=["#A9A9A9"],  
     )
 
     fig.add_vline(
@@ -735,5 +732,6 @@ with col_main:
     for tab, model in zip(model_tabs, models):
         with tab:
             render_model_analysis(model, language, job_type_filter)
+
 
 
