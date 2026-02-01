@@ -22,6 +22,9 @@ df_mistral_french_rag = pd.read_csv("results/french/rag/mistral_french_extracted
 df_mistral_french = pd.read_csv("results/french/mistral_french_extracted_checked.csv", sep=';')
 df_llama_french = pd.read_csv("results/french/llama3_french_extracted_checked.csv", sep=';')
 df_llama_french_rag = pd.read_csv("results/french/rag/llama3_french_extracted_checked.csv", sep=';')
+df_gpt5_polish = pd.read_csv("results/polish/gpt5_polish_extracted_checked.csv", sep=';')
+df_gpt5_english = pd.read_csv("results/englishsh/gpt5_english_extracted_checked.csv", sep=';')
+df_gpt5_french = pd.read_csv("results/french/gpt5_french_extracted_checked.csv", sep=';')
 
 # funkcja do filtrowania ramek danych według grupy zawodów
 def filter_by_job_type(df, job_type_filter):
@@ -104,6 +107,9 @@ dataframes = {
     ("Mistral", "FR", True): df_mistral_french_rag,
     ("Llama", "FR", False): df_llama_french,
     ("Llama", "FR", True): df_llama_french_rag,
+    ("GPT-5", "EN", False): df_gpt5_english,
+    ("GPT-5", "PL", False): df_gpt5_polish,
+    ("GPT-5", "FR", False): df_gpt5_french,
 }
 
 
@@ -445,6 +451,66 @@ def plot_overall_distribution_shared(df_left, df_right, model_name="", language=
 
 
 
+def plot_overall_distribution_shared_gpt(df, model_name="", language=""):
+
+    PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
+
+    colors = {
+        "female": "#F08080",
+        "male": "#6495ED",
+        "neutral": "#A9A9A9",
+        "non-binary": "#FFE27B",
+        "male/female": "#9779AD",
+    }
+
+    # Prepare data
+    counts = df['gender_from_desc'].value_counts().reset_index()
+    counts.columns = ['gender', 'count']
+    counts = counts[counts['count'] > 0]
+
+    # Order genders
+    genders_present = list(counts['gender'])
+    all_genders = [g for g in PREFERRED_LEGEND_ORDER if g in genders_present]
+    all_genders += [g for g in genders_present if g not in PREFERRED_LEGEND_ORDER]
+
+    fig = go.Figure()
+
+    for g in all_genders:
+        fig.add_trace(
+            go.Bar(
+                x=[g],
+                y=[counts[counts.gender == g]['count'].values[0]],
+                name=g,
+                marker_color=colors.get(g, "#888")
+            )
+        )
+
+    fig.update_layout(
+        height=500,
+        width=800,
+        barmode="group",
+        xaxis=dict(title="Gender", tickfont=dict(size=12)),
+        yaxis=dict(title="Count", tickfont=dict(size=12)),
+        font=dict(size=14),
+        legend=dict(
+            title="Gender",
+            x=1.02,
+            y=0.5,
+            xanchor="left",
+            yanchor="middle"
+        ),
+        title=dict(
+            text=f"Overall Gender Distribution - {model_name} ({language})",
+            x=0.5,
+            xanchor="center",
+            font=dict(size=20)
+        )
+    )
+
+    return fig
+
+
+
 def plot_job_gender_radar_shared(df_left, df_right):
 
     PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
@@ -581,7 +647,165 @@ def plot_job_gender_radar_shared(df_left, df_right):
     return fig
 
 
+def plot_gender_by_job_plotly_combined_gpt(df, job_type_filter="All", model_name="", language=""):
+    jobs_list = [
+        "secretary", "dressmaker", "nurse", "psychologist", "librarian",
+        "HR specialist", "dietician", "school teacher", "cosmetologist",
+        "speech therapist", "software engineer", "firefighter", "carpenter",
+        "taxi driver", "aircraft pilot", "mechanical engineer",
+        "chief executive", "miner", "mathematician", "fisher",
+        "accountant", "judge", "pharmacist",
+        "financial analyst", "dining room staff"
+    ]
 
+   
+    if job_type_filter != "All":
+        job_type_map = {
+            "Female-dominated": "female dominated",
+            "Male-dominated": "male dominated",
+            "Neutral": "neutral"
+        }
+        allowed_jobs = (
+            df[df["job_type"] == job_type_map[job_type_filter]]
+            ["job_title_english"]
+            .unique()
+            .tolist()
+        )
+        jobs_list = [job for job in jobs_list if job in allowed_jobs]
+
+    def prepare_pivot1(df):
+        pivot = df.pivot_table(
+            index="job_title_english",
+            columns="gender_from_desc",
+            aggfunc="size",
+            fill_value=0
+        )
+        pivot = pivot.reindex(jobs_list).dropna(how="all")
+        return pivot
+    
+    def prepare_pivot2(df):
+        pivot = df.pivot_table(
+            index="job_title_english",
+            columns="gender_from_prompt",
+            aggfunc="size",
+            fill_value=0
+        )
+        pivot = pivot.reindex(jobs_list).dropna(how="all")
+        return pivot
+
+    colors = {
+        "female": "#F08080",
+        "male": "#6495ED",
+        "neutral": "#A9A9A9",
+        "male/female": "#9779AD",
+        "non-binary": "#FFE27B",
+        "invalid": "#EEE7E7"
+    }
+
+    pivot_no_rag = prepare_pivot1(df)
+    pivot_rag = prepare_pivot2(df)
+
+ 
+    PREFERRED_LEGEND_ORDER = ["female", "male", "male/female", "non-binary", "neutral"]
+    def sort_genders(genders):
+        gset = list(dict.fromkeys(genders))
+        ordered = [g for g in PREFERRED_LEGEND_ORDER if g in gset]
+        ordered += [g for g in gset if g not in PREFERRED_LEGEND_ORDER]
+        return ordered
+
+    all_genders = sort_genders(list(set(pivot_no_rag.columns) | set(pivot_rag.columns)))
+
+ 
+    fig = make_subplots(
+        rows=1, cols=2,
+        shared_yaxes=True,
+        horizontal_spacing=0.05,
+        subplot_titles=("From description", "From gender prompt")
+    )
+
+
+    legend_shown = {gender: False for gender in all_genders}
+
+  
+    for gender in all_genders:
+        if gender in pivot_no_rag.columns:
+            fig.add_trace(
+                go.Bar(
+                    y=pivot_no_rag.index,
+                    x=pivot_no_rag[gender],
+                    name=gender,
+                    orientation='h',
+                    marker_color=colors.get(gender, "black"),
+                    legendgroup=gender,
+                    showlegend=not legend_shown[gender]
+                ),
+                row=1, col=1
+            )
+            legend_shown[gender] = True  
+
+
+    for gender in all_genders:
+        if gender in pivot_rag.columns:
+            fig.add_trace(
+                go.Bar(
+                    y=pivot_rag.index,
+                    x=pivot_rag[gender],
+                    name=gender,
+                    orientation='h',
+                    marker_color=colors.get(gender, "black"),
+                    legendgroup=gender,
+                    showlegend=not legend_shown[gender]
+                ),
+                row=1, col=2
+            )
+            legend_shown[gender] = True
+
+    fig.update_layout(
+        barmode='stack',
+        title=dict(
+            text=f"Gender Distribution by Job Title - {model_name} ({language})",
+            font=dict(size=20, color="black"),
+            x=0.5,
+            xanchor="center"
+        ),
+        font=dict(size=14, color="black"),
+        height=600,
+        width=1800,
+        xaxis=dict(
+            title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        xaxis2=dict(
+            title=dict(text="Number of Occurrences", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        yaxis=dict(
+            title=dict(text="Job Title", font=dict(color="black", size=14)),
+            tickfont=dict(color="black", size=12)
+        ),
+        yaxis2=dict(
+            tickfont=dict(color="black", size=12)
+        ),
+        legend=dict(
+            title=dict(text="Gender", font=dict(size=12, color="black")),
+            font=dict(size=12, color="black"),
+            x=1.02,
+            y=0.5,
+            xanchor="left",
+            yanchor="middle",
+            orientation="v",
+            bgcolor="rgba(255,255,255,0)",
+            bordercolor="rgba(0,0,0,0)",
+            borderwidth=0,
+            traceorder='normal'
+        ),
+        margin=dict(l=150, r=150, t=100, b=50)
+    )
+
+
+    return fig
+
+    
 
 def plot_neutral_delta_count_per_job(delta, title="Effect of RAG on Neutral Descriptions per Job"):
     jobs_list = ["secretary", "dressmaker", "nurse", "psychologist", "librarian", "HR specialist", "dietician", 
@@ -628,72 +852,88 @@ def render_model_analysis(model, language, job_type_filter):
 
     df_no_rag = dataframes.get((model, language, False))
     df_rag    = dataframes.get((model, language, True))
+    
+    if model == 'GPT-5':
+        df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
 
-    if df_no_rag is None or df_rag is None:
-        st.warning(f"No data for model {model} ({language})")
-        return
-
-    df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
-    df_rag    = filter_by_job_type(df_rag, job_type_filter)
-
-    if df_no_rag.empty or df_rag.empty:
-        st.info(f"No data for selected job group ({job_type_filter})")
-        return
-
-    st.subheader(f"{model}")
-
-    # -------- BAR CHARTS --------
-    # st.markdown("#### Gender Distribution by Job Title")
-    fig = plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter, model_name=model, language=language)
-    st.plotly_chart(fig, use_container_width=True)
-
-
-
-    # -------- OVERALL DISTRIBUTION --------
-    # st.markdown("#### Overall Gender Distribution")
-    st.plotly_chart(
-    plot_overall_distribution_shared(df_no_rag, df_rag, model_name=model, language=language),
-    use_container_width=True
-)      
-
-
-    # -------- DETAILS TOGGLE --------
-    show_details = st.toggle(
-        "Show more detailed analysis",
-        key=f"sankey_{language}_{model}"
-    )
-
-    if show_details:
-
-        job_options = ["All"] + sorted(
-            set(df_no_rag["job_title_english"]) |
-            set(df_rag["job_title_english"])
-        )
-
-        selected_job = st.selectbox(
-            "Select job title",
-            job_options,
-            key=f"job_{language}_{model}"
-        )
-        # ------ SANKY DIAGRAMS --------
-        fig = plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=selected_job, model_name=model, language=language)
+        st.subheader(f"{model}")
+        fig = plot_gender_by_job_plotly_combined_gpt(df_no_rag, job_type_filter, model_name=model, language=language)
         st.plotly_chart(fig, use_container_width=True)
-         # -------- SPIDER CHART --------
-        st.plotly_chart(
-        plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
-        use_container_width=True
-    )
-       
-        # -------- DELTA NEUTRAL --------
-        delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag);
 
+
+        fig = plot_overall_distribution_shared_gpt(df_no_rag, model_name=model, language=language)
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
+    else:
+            
+
+        if df_no_rag is None or df_rag is None:
+            st.warning(f"No data for model {model} ({language})")
+            return
+
+        df_no_rag = filter_by_job_type(df_no_rag, job_type_filter)
+        df_rag    = filter_by_job_type(df_rag, job_type_filter)
+
+        if df_no_rag.empty or df_rag.empty:
+            st.info(f"No data for selected job group ({job_type_filter})")
+            return
+
+        st.subheader(f"{model}")
+
+        # -------- BAR CHARTS --------
+        # st.markdown("#### Gender Distribution by Job Title")
+        fig = plot_gender_by_job_plotly_combined(df_no_rag, df_rag, job_type_filter, model_name=model, language=language)
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
+        # -------- OVERALL DISTRIBUTION --------
+        # st.markdown("#### Overall Gender Distribution")
         st.plotly_chart(
-            plot_neutral_delta_count_per_job(
-                delta_neutral_jobs,
-                title=f"Effect of RAG on Neutral Descriptions per Job – {model} ({language})"
-            ),
+        plot_overall_distribution_shared(df_no_rag, df_rag, model_name=model, language=language),
+        use_container_width=True
+    )      
+
+
+        # -------- DETAILS TOGGLE --------
+        show_details = st.toggle(
+            "Show more detailed analysis",
+            key=f"sankey_{language}_{model}"
+        )
+
+        if show_details:
+
+            job_options = ["All"] + sorted(
+                set(df_no_rag["job_title_english"]) |
+                set(df_rag["job_title_english"])
+            )
+
+            selected_job = st.selectbox(
+                "Select job title",
+                job_options,
+                key=f"job_{language}_{model}"
+            )
+            # ------ SANKY DIAGRAMS --------
+            fig = plot_gender_sankey_subplots(df_no_rag, df_rag, job_title=selected_job, model_name=model, language=language)
+            st.plotly_chart(fig, use_container_width=True)
+            # -------- SPIDER CHART --------
+            st.plotly_chart(
+            plot_job_gender_radar_shared(df_left=df_no_rag, df_right=df_rag),
             use_container_width=True
         )
+        
+            # -------- DELTA NEUTRAL --------
+            delta_neutral_jobs = neutralization_delta_per_job(df_no_rag, df_rag);
+
+            st.plotly_chart(
+                plot_neutral_delta_count_per_job(
+                    delta_neutral_jobs,
+                    title=f"Effect of RAG on Neutral Descriptions per Job – {model} ({language})"
+                ),
+                use_container_width=True
+            )
 # =========================
 # STREAMLIT APP (DYNAMIC MODELS BY LANGUAGE)
 # =========================
@@ -732,6 +972,3 @@ with col_main:
     for tab, model in zip(model_tabs, models):
         with tab:
             render_model_analysis(model, language, job_type_filter)
-
-
-
