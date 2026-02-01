@@ -23,7 +23,7 @@ df_mistral_french = pd.read_csv("results/french/mistral_french_extracted_checked
 df_llama_french = pd.read_csv("results/french/llama3_french_extracted_checked.csv", sep=';')
 df_llama_french_rag = pd.read_csv("results/french/rag/llama3_french_extracted_checked.csv", sep=';')
 df_gpt5_polish = pd.read_csv("results/polish/gpt5_polish_extracted_checked.csv", sep=';')
-df_gpt5_english = pd.read_csv("results/englishsh/gpt5_english_extracted_checked.csv", sep=';')
+df_gpt5_english = pd.read_csv("results/english/gpt5_english_extracted_checked.csv", sep=';')
 df_gpt5_french = pd.read_csv("results/french/gpt5_french_extracted_checked.csv", sep=';')
 
 # funkcja do filtrowania ramek danych według grupy zawodów
