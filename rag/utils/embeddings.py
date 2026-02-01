@@ -11,5 +11,4 @@ class EmbeddingGenerator:
         return embeddings
     
     def save_embeddings(self, texts: list[str], embeddings: list[list[float]], output_path: str):
-
         np.savez_compressed(output_path, texts=texts, embeddings=embeddings)
